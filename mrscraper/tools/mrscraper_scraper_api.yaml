@@ -1,0 +1,244 @@
+identity:
+  name: mrscraper_scraper_api
+  author: ai-mrscraper
+  label:
+    en_US: Scraper API
+description:
+  human:
+    en_US: Fetch HTML, Markdown, or screenshots through the MrScraper Scraper API.
+  llm: Fetch HTML, Markdown, or screenshots through the MrScraper Scraper API.
+parameters:
+- name: url
+  type: string
+  required: true
+  label:
+    en_US: URL
+  human_description:
+    en_US: Absolute HTTP or HTTPS page URL.
+  llm_description: Absolute HTTP or HTTPS page URL.
+  form: llm
+- name: html
+  type: boolean
+  required: false
+  label:
+    en_US: HTML
+  human_description:
+    en_US: Include HTML in the response.
+  llm_description: Include HTML in the response.
+  form: llm
+  default: true
+- name: markdown
+  type: boolean
+  required: false
+  label:
+    en_US: Markdown
+  human_description:
+    en_US: Include Markdown in the response.
+  llm_description: Include Markdown in the response.
+  form: llm
+  default: false
+- name: screenshot
+  type: boolean
+  required: false
+  label:
+    en_US: Screenshot
+  human_description:
+    en_US: Capture a screenshot. Also forces browser rendering.
+  llm_description: Capture a screenshot. Also forces browser rendering.
+  form: llm
+  default: false
+- name: browser_rendering
+  type: select
+  required: false
+  label:
+    en_US: Browser Rendering
+  human_description:
+    en_US: Automatic fallback, force browser rendering, or disable it.
+  llm_description: Automatic fallback, force browser rendering, or disable it.
+  form: llm
+  default: auto
+  options:
+  - value: auto
+    label:
+      en_US: Automatic
+  - value: 'true'
+    label:
+      en_US: Enabled
+  - value: 'false'
+    label:
+      en_US: Disabled
+- name: timeout
+  type: number
+  required: false
+  label:
+    en_US: Timeout
+  human_description:
+    en_US: Page timeout in seconds, from 1 to 300. HTTP timeout adds 30 seconds.
+  llm_description: Page timeout in seconds, from 1 to 300. HTTP timeout adds 30 seconds.
+  form: llm
+  default: 120
+  min: 1
+  max: 300
+  precision: 0
+- name: geo_code
+  type: string
+  required: false
+  label:
+    en_US: Geo Code
+  human_description:
+    en_US: Geolocation country code. Defaults to US.
+  llm_description: Geolocation country code. Defaults to US.
+  form: llm
+  default: US
+- name: proxy_country
+  type: string
+  required: false
+  label:
+    en_US: Proxy Country
+  human_description:
+    en_US: Optional proxy country, sent separately from geo_code.
+  llm_description: Optional proxy country, sent separately from geo_code.
+  form: llm
+- name: super
+  type: boolean
+  required: false
+  label:
+    en_US: Super
+  human_description:
+    en_US: Enable real device routing.
+  llm_description: Enable real device routing.
+  form: llm
+  default: false
+- name: use_proxy
+  type: boolean
+  required: false
+  label:
+    en_US: Use Proxy
+  human_description:
+    en_US: Allow proxy routing.
+  llm_description: Allow proxy routing.
+  form: llm
+  default: true
+- name: proxy
+  type: string
+  required: false
+  label:
+    en_US: Custom Proxy
+  human_description:
+    en_US: Optional proxy in username:password@host:port format.
+  llm_description: Optional proxy in username:password@host:port format.
+  form: llm
+- name: home_page
+  type: boolean
+  required: false
+  label:
+    en_US: Visit Home Page
+  human_description:
+    en_US: Visit the root page first. Maps to warmStart.
+  llm_description: Visit the root page first. Maps to warmStart.
+  form: llm
+  default: false
+- name: wait_for_selector
+  type: string
+  required: false
+  label:
+    en_US: Wait for Selector
+  human_description:
+    en_US: Optional CSS selector to wait for.
+  llm_description: Optional CSS selector to wait for.
+  form: llm
+- name: block_resources
+  type: boolean
+  required: false
+  label:
+    en_US: Block Resources
+  human_description:
+    en_US: Block images, CSS, and fonts.
+  llm_description: Block images, CSS, and fonts.
+  form: llm
+  default: false
+- name: bypass_proxy
+  type: boolean
+  required: false
+  label:
+    en_US: Bypass Proxy
+  human_description:
+    en_US: Enable the API proxy bypass behavior.
+  llm_description: Enable the API proxy bypass behavior.
+  form: llm
+  default: false
+- name: cookie_jar
+  type: string
+  required: false
+  label:
+    en_US: Cookie Jar
+  human_description:
+    en_US: Optional cookie configuration string.
+  llm_description: Optional cookie configuration string.
+  form: llm
+- name: headers
+  type: string
+  required: false
+  label:
+    en_US: Target Headers
+  human_description:
+    en_US: Optional JSON object containing target request headers with string values.
+  llm_description: Optional JSON object containing target request headers with string
+    values.
+  form: llm
+- name: max_retries
+  type: number
+  required: false
+  label:
+    en_US: Max Retries
+  human_description:
+    en_US: Retry limit. Zero disables retries.
+  llm_description: Retry limit. Zero disables retries.
+  form: llm
+  default: 3
+  min: 0
+  precision: 0
+- name: token_cap
+  type: number
+  required: false
+  label:
+    en_US: Token Cap
+  human_description:
+    en_US: Optional retry token budget. Zero is supported.
+  llm_description: Optional retry token budget. Zero is supported.
+  form: llm
+  min: 0
+  precision: 0
+- name: stream
+  type: select
+  required: false
+  label:
+    en_US: Stream
+  human_description:
+    en_US: Request buffering mode. The SDK buffers streamed responses before returning.
+  llm_description: Request buffering mode. The SDK buffers streamed responses before
+    returning.
+  form: llm
+  default: auto
+  options:
+  - value: auto
+    label:
+      en_US: API Default
+  - value: 'true'
+    label:
+      en_US: Enabled
+  - value: 'false'
+    label:
+      en_US: Disabled
+- name: discard_token_secret
+  type: string
+  required: false
+  label:
+    en_US: Discard Token Secret
+  human_description:
+    en_US: Optional x-discard-token-secret request header value.
+  llm_description: Optional x-discard-token-secret request header value.
+  form: llm
+extra:
+  python:
+    source: tools/mrscraper_scraper_api.py

@@ -1,0 +1,29 @@
+identity:
+  author: ai-mrscraper
+  name: mrscraper
+  label:
+    en_US: MrScraper
+  description:
+    en_US: MrScraper Account, Scraper API, and Web Search.
+  icon: icon.svg
+  tags:
+  - search
+  - utilities
+credentials_for_provider:
+  api_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Token
+    placeholder:
+      en_US: Enter your MrScraper API token
+    help:
+      en_US: Create or copy an API token from your MrScraper account.
+    url: https://app.mrscraper.com
+tools:
+- tools/mrscraper_account.yaml
+- tools/mrscraper_scraper_api.yaml
+- tools/mrscraper_web_search.yaml
+extra:
+  python:
+    source: provider/mrscraper.py

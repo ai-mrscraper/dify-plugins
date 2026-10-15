@@ -1,0 +1,24 @@
+identity:
+  name: mrscraper_account
+  author: ai-mrscraper
+  label:
+    en_US: Account
+description:
+  human:
+    en_US: Retrieve safe account identity, subscription, token quota, and rate limits.
+  llm: Retrieve safe account identity, subscription, token quota, and rate limits.
+parameters:
+- name: timeout
+  type: number
+  required: false
+  label:
+    en_US: Timeout
+  human_description:
+    en_US: Account request timeout in seconds. Defaults to 30.
+  llm_description: Account request timeout in seconds. Defaults to 30.
+  form: llm
+  default: 30
+  min: 0.1
+extra:
+  python:
+    source: tools/mrscraper_account.py

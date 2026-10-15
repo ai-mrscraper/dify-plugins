@@ -1,0 +1,101 @@
+identity:
+  name: mrscraper_web_search
+  author: ai-mrscraper
+  label:
+    en_US: Web Search
+description:
+  human:
+    en_US: Search Google using query text or a Google search URL. Disable raw to request
+      JSON.
+  llm: Search Google using query text or a Google search URL. Disable raw to request
+    JSON.
+parameters:
+- name: url
+  type: string
+  required: true
+  label:
+    en_US: Query or Google URL
+  human_description:
+    en_US: Search query text or a Google search URL with a q parameter.
+  llm_description: Search query text or a Google search URL with a q parameter.
+  form: llm
+- name: raw
+  type: boolean
+  required: false
+  label:
+    en_US: Raw HTML
+  human_description:
+    en_US: Return HTML regardless of format when enabled. Disable for JSON.
+  llm_description: Return HTML regardless of format when enabled. Disable for JSON.
+  form: llm
+  default: true
+- name: format
+  type: select
+  required: false
+  label:
+    en_US: Format
+  human_description:
+    en_US: Response format when raw is false.
+  llm_description: Response format when raw is false.
+  form: llm
+  default: json
+  options:
+  - value: json
+    label:
+      en_US: JSON
+  - value: html
+    label:
+      en_US: HTML
+- name: region
+  type: string
+  required: false
+  label:
+    en_US: Region
+  human_description:
+    en_US: Optional country code, overriding gl from a Google URL.
+  llm_description: Optional country code, overriding gl from a Google URL.
+  form: llm
+- name: language
+  type: string
+  required: false
+  label:
+    en_US: Language
+  human_description:
+    en_US: Optional language code, overriding hl from a Google URL.
+  llm_description: Optional language code, overriding hl from a Google URL.
+  form: llm
+- name: page
+  type: number
+  required: false
+  label:
+    en_US: Page
+  human_description:
+    en_US: One based results page, overriding start from a Google URL.
+  llm_description: One based results page, overriding start from a Google URL.
+  form: llm
+  min: 1
+  precision: 0
+- name: render_js
+  type: boolean
+  required: false
+  label:
+    en_US: Render JavaScript
+  human_description:
+    en_US: Render JavaScript dependent search features.
+  llm_description: Render JavaScript dependent search features.
+  form: llm
+  default: false
+- name: timeout
+  type: number
+  required: false
+  label:
+    en_US: Timeout
+  human_description:
+    en_US: Search request timeout in seconds. Defaults to 600.
+  llm_description: Search request timeout in seconds. Defaults to 600.
+  form: llm
+  default: 600
+  min: 0.1
+extra:
+  python:
+    source: tools/mrscraper_web_search.py
