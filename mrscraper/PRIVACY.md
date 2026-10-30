@@ -1,8 +1,8 @@
 # Privacy Policy for the MrScraper Dify Plugin
 
-Last updated: October 15, 2026
+Last updated: October 30, 2026
 
-This policy describes data processing performed by the MrScraper Dify plugin, version 0.1.0. The plugin uses the MrScraper Python SDK (`mrscraper-sdk==0.6.0`) for Account, Scraper API, and Web Search. Use of the service is also governed by MrScraper's [Privacy Policy](https://mrscraper.com/privacy-policy) and [Data Protection Policy](https://mrscraper.com/data-protection-policy).
+This policy describes data processing performed by the MrScraper Dify plugin, version 0.1.1. The plugin uses the MrScraper Python SDK (`mrscraper-sdk==0.6.0`) for Account, Scraper API, and Web Search. Use of the service is also governed by MrScraper's [Privacy Policy](https://mrscraper.com/privacy-policy) and [Data Protection Policy](https://mrscraper.com/data-protection-policy).
 
 ## Data sent to MrScraper
 
@@ -10,15 +10,11 @@ The plugin sends the provider's API token and the information needed for the sel
 
 - **Account:** the authentication token.
 - **Scraper API:** the target URL; requested HTML, Markdown, or screenshot output; rendering and real device routing settings; geolocation and proxy country; a custom proxy value, which may contain proxy credentials; target request headers; cookie-jar configuration; selector waiting and home-page navigation settings; resource and proxy controls; timeout, retries, token budget, and stream options; and an optional discard-token secret.
-- **Web Search:** search query text or query fields extracted from a supplied Google search URL, region, language, result page, output format, and JavaScript rendering preference.
+- **Web Search:** the search query, region, language, result page, output format, and JavaScript rendering preference.
 
 MrScraper fetches the requested content or search results and returns the response to the plugin. Depending on the operation, this may include account identity and quota information, page HTML, Markdown, screenshots, or search data. Target content and user-provided headers, cookie configuration, or proxy settings may contain personal or confidential information.
 
-The plugin connects to exactly these MrScraper API hosts over HTTPS:
-
-- `api.app.mrscraper.com` for Account and credential validation;
-- `api.mrscraper.com` for Scraper API;
-- `sync.scraper.mrscraper.com` for Web Search.
+The plugin sends operation data to MrScraper over HTTPS.
 
 Target websites are accessed by the MrScraper service rather than directly by the plugin.
 

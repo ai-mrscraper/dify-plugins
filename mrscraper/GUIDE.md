@@ -43,7 +43,7 @@ Keep `.env` and tokens out of source control and packaged artifacts. For release
 
 ## Release consistency
 
-Keep the plugin version consistent across project metadata and `manifest.yaml`. Confirm that the manifest allows only the three hosts documented in the README and uses Python 3.12. Check the 660-second plugin request ceiling in `main.py`. Account defaults to 30 seconds; Scraper API defaults to 120 seconds plus 30 seconds for transport; Web Search defaults to 600 seconds. Infrastructure may impose shorter deadlines.
+Keep the plugin version consistent across project metadata and `manifest.yaml`. Confirm that network permissions in the manifest match the SDK requirements and that the runner uses Python 3.12. Check the 660-second plugin request ceiling in `main.py`. Account defaults to 30 seconds; Scraper API defaults to 120 seconds plus 30 seconds for transport; Web Search defaults to 600 seconds. Infrastructure may impose shorter deadlines.
 
 Before packaging, run tests and lint, check dependencies and the lockfile, and review README and PRIVACY against the final code. Packaging and publication are separate release actions; this guide does not perform them.
 

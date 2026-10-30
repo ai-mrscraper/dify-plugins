@@ -11,15 +11,9 @@ Use MrScraper in Dify Agents, Chatflows, and Workflows through three tools: **Ac
 3. Open the MrScraper provider credentials and enter the token under **API Token**.
 4. Add one of the three tools to your Agent or Workflow.
 
-The provider validates the credential with the Account endpoint. Dify supplies this one provider-level credential at runtime; the API token is never a tool parameter.
+The provider validates the credential with the Account tool. Dify supplies this one provider-level credential at runtime; the API token is never a tool parameter.
 
-Your Dify deployment must allow outbound HTTPS connections to these three hosts:
-
-| Host | Used by |
-| --- | --- |
-| `api.app.mrscraper.com` | Account and credential validation |
-| `api.mrscraper.com` | Scraper API |
-| `sync.scraper.mrscraper.com` | Web Search |
+Your Dify deployment must allow outbound HTTPS connections to MrScraper.
 
 ## Tools
 
@@ -27,7 +21,7 @@ Your Dify deployment must allow outbound HTTPS connections to these three hosts:
 | --- | --- | --- |
 | Account | `mrscraper_account` | Read account identity, subscription, token quota, and rate limits. |
 | Scraper API | `mrscraper_scraper_api` | Fetch a page as HTML, Markdown, a screenshot, or a combination. |
-| Web Search | `mrscraper_web_search` | Search Google using query text or a Google search URL. |
+| Web Search | `mrscraper_web_search` | Search the web to retrieve real-time search results, including relevant website URLs, titles, descriptions, and related questions based on a given query. |
 
 ### Account
 
@@ -60,7 +54,7 @@ Only `url` is required. To fetch HTML, Markdown, and a screenshot together:
 | `screenshot` | `false` | Request a screenshot and enable browser rendering. |
 | `super` | `false` | Enable real device routing. |
 | `use_proxy`, `proxy` | `true`, unset | Allow proxy use or supply `username:password@host:port`. |
-| `home_page` | `false` | Visit the site root first; sent as `warmStart=true`. |
+| `home_page` | `false` | Visit the site root before the target page. |
 | `wait_for_selector` | Unset | Wait for a CSS selector. |
 | `block_resources`, `bypass_proxy` | `false`, `false` | Block images, CSS, and fonts, or enable the API's proxy bypass behavior. |
 | `cookie_jar` | Unset | Cookie configuration string, such as `domain=example.com&country=us&max_used=100&max_age=50m`. |
@@ -73,7 +67,7 @@ The API may return a string or a structured response containing several represen
 
 ### Web Search
 
-The `url` parameter accepts query text or a full Google search URL. To request parsed JSON:
+Search the web to retrieve real-time search results, including relevant website URLs, titles, descriptions, and related questions based on a given query. Pass the search query in `url`. To request parsed JSON:
 
 ```json
 {
@@ -90,15 +84,15 @@ The `url` parameter accepts query text or a full Google search URL. To request p
 
 | Parameter | Default | Purpose |
 | --- | --- | --- |
-| `url` | Required | Search query or Google search URL containing `q`. |
+| `url` | Required | The search query. |
 | `raw` | `true` | Request HTML and override `format` when true. |
 | `format` | `"json"` | `"json"` or `"html"`, used when `raw=false`. |
-| `region`, `language` | Unset | Override `gl` and `hl` from a search URL. |
-| `page` | Unset | Positive, one based results page; overrides the URL's `start`. |
+| `region`, `language` | Unset | Optional country and language codes for search results. |
+| `page` | Unset | Results page number, starting at `1`. |
 | `render_js` | `false` | Render JavaScript-dependent result features. |
 | `timeout` | `600` | Positive request timeout in seconds. |
 
-For `https://www.google.com/search?q=running+shoes&gl=us&hl=en&start=20`, the SDK extracts query `running shoes`, region `us`, language `en`, and page `3`. Explicit `region`, `language`, and `page` values override those URL values. Each call fetches one page; use successive calls with different `page` values to paginate.
+Each call retrieves one results page. Set `region` and `language` to customize the search, and use successive calls with different `page` values to paginate.
 
 ## Outputs and timeouts
 
@@ -110,7 +104,7 @@ Account defaults to a 30-second request timeout. Scraper API defaults to a 120-s
 
 Version **0.1.0 is a breaking update**. It removes all 18 previous tool IDs and registers the three IDs listed above. Recreate affected Agent and Workflow tool nodes and reconnect their inputs and outputs.
 
-Use Account for the previous Get Account Info operation, Scraper API for page fetching, and Web Search for Google searches. Review parameters when recreating nodes: for example, Scraper API uses `super`, `cookie_jar`, and boolean `screenshot`; Web Search accepts query text through `url` and defaults to raw HTML. The former extraction, crawl, reusable scraper creation, scraper rerun, and saved-result operations have no equivalent in this release.
+Use Account for the previous Get Account Info operation, Scraper API for page fetching, and Web Search for search results. Review parameters when recreating nodes: for example, Scraper API uses `super`, `cookie_jar`, and boolean `screenshot`; Web Search accepts query text through `url` and defaults to raw HTML. The former extraction, crawl, reusable scraper creation, scraper rerun, and saved-result operations have no equivalent in this release.
 
 ## Privacy and support
 

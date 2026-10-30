@@ -5,19 +5,17 @@ identity:
     en_US: Web Search
 description:
   human:
-    en_US: Search Google using query text or a Google search URL. Disable raw to request
-      JSON.
-  llm: Search Google using query text or a Google search URL. Disable raw to request
-    JSON.
+    en_US: Search the web to retrieve real-time search results, including relevant website URLs, titles, descriptions, and related questions based on a given query. Disable raw to request JSON.
+  llm: Search the web to retrieve real-time search results, including relevant website URLs, titles, descriptions, and related questions based on a given query. Disable raw to request JSON.
 parameters:
 - name: url
   type: string
   required: true
   label:
-    en_US: Query or Google URL
+    en_US: Search Query
   human_description:
-    en_US: Search query text or a Google search URL with a q parameter.
-  llm_description: Search query text or a Google search URL with a q parameter.
+    en_US: The search query.
+  llm_description: The search query.
   form: llm
 - name: raw
   type: boolean
@@ -52,8 +50,8 @@ parameters:
   label:
     en_US: Region
   human_description:
-    en_US: Optional country code, overriding gl from a Google URL.
-  llm_description: Optional country code, overriding gl from a Google URL.
+    en_US: Optional country code for search results.
+  llm_description: Optional country code for search results.
   form: llm
 - name: language
   type: string
@@ -61,8 +59,8 @@ parameters:
   label:
     en_US: Language
   human_description:
-    en_US: Optional language code, overriding hl from a Google URL.
-  llm_description: Optional language code, overriding hl from a Google URL.
+    en_US: Optional language code for search results.
+  llm_description: Optional language code for search results.
   form: llm
 - name: page
   type: number
@@ -70,8 +68,8 @@ parameters:
   label:
     en_US: Page
   human_description:
-    en_US: One based results page, overriding start from a Google URL.
-  llm_description: One based results page, overriding start from a Google URL.
+    en_US: Results page number, starting at 1.
+  llm_description: Results page number, starting at 1.
   form: llm
   min: 1
   precision: 0
@@ -81,8 +79,8 @@ parameters:
   label:
     en_US: Render JavaScript
   human_description:
-    en_US: Render JavaScript dependent search features.
-  llm_description: Render JavaScript dependent search features.
+    en_US: Render search features that depend on JavaScript.
+  llm_description: Render search features that depend on JavaScript.
   form: llm
   default: false
 - name: timeout
