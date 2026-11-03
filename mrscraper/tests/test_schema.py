@@ -47,10 +47,20 @@ def test_scraper_tristate_and_json_header_controls_are_renderer_safe() -> None:
     assert parameters["html"]["default"] is True
 
 
-def test_search_defaults_explain_the_sdk_raw_html_behavior() -> None:
+def test_search_schema_exposes_query_country_and_bounded_result_count() -> None:
     schema = yaml.safe_load((ROOT / "tools/mrscraper_web_search.yaml").read_text())
     parameters = {parameter["name"]: parameter for parameter in schema["parameters"]}
 
-    assert parameters["raw"]["default"] is True
-    assert parameters["format"]["default"] == "json"
-    assert parameters["timeout"]["default"] == 600
+    assert list(parameters) == ["query", "country", "num_results"]
+    assert parameters["query"]["required"] is True
+    assert parameters["country"]["required"] is False
+    num_results = parameters["num_results"]
+    assert (num_results["default"], num_results["min"], num_results["max"]) == (10, 10, 100)
+
+
+def test_manifest_and_project_versions_match_and_network_domains_are_minimal() -> None:
+    manifest = yaml.safe_load((ROOT / "manifest.yaml").read_text())
+    pyproject = (ROOT / "pyproject.toml").read_text()
+
+    assert f'version = "{manifest["version"]}"' in pyproject
+    assert manifest["network"]["domains"] == ["api.app.mrscraper.com", "api.mrscraper.com"]

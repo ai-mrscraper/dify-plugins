@@ -1,6 +1,6 @@
 # Developing the MrScraper Dify Plugin
 
-The plugin exposes three tools backed by `mrscraper-sdk==0.6.0`: Account, Scraper API, and Web Search. This guide covers the plugin adapter; see the [SDK source](https://github.com/mrscraper-com/sdk-python) for HTTP request construction and the [README](README.md) for user-facing parameters and examples.
+The plugin exposes three tools: Account, Scraper API, and Web Search. `common/client.py` calls the MrScraper HTTPS API directly with `httpx`. See the [README](README.md) for user-facing parameters and examples.
 
 ## Environment
 
@@ -12,26 +12,30 @@ uv run pytest
 uv run ruff check .
 ```
 
-Keep runtime dependencies synchronized between `pyproject.toml` and `requirements.txt`, and update `uv.lock` when dependencies change. The Dify SDK and MrScraper SDK versions are pinned for reproducible plugin installation.
+Keep runtime dependencies synchronized between `pyproject.toml` and `requirements.txt`, and update `uv.lock` when dependencies change. The `dify-plugin` and `httpx` versions are pinned for reproducible plugin installation.
+
+## API contract
+
+- **Account:** `GET https://api.app.mrscraper.com/api/v1/subscription-accounts` with `Authorization: Bearer <token>` and `x-api-token`. The client returns a safe summary that excludes API keys and billing identifiers.
+- **Scraper API:** `GET https://api.mrscraper.com` with the `x-api-token` header. Everything goes in the query string: `token`, `url`, `html`, `markdown`, `screenshot`, `timeout`, `geoCode`, `maxRetries`, `tokenCap`, and the optional page controls (`proxyCountry`, `browserRendering`, `super`, `useProxy=false`, `proxy`, `waitForSelector`, `waitUntil`, `warmStart`, `blockResources`, `bypassProxy`, `cookieJar`, `headers` as a JSON string, `stream`). Do not use `POST`: the service forwards the request method to the target site. A screenshot forces `browserRendering=true`. At least one of `html`, `markdown`, or `screenshot` must be true. HTML only returns `text/html`; any combination with Markdown or a screenshot returns JSON.
+- **Web Search:** `POST https://api.mrscraper.com` with `x-api-token` and `Content-Type: application/json`, body `{"action": "websearch", "query": "...", "country": "us", "numResults": 10}`. `numResults` must be an integer from 10 to 100; omit `country` when unset. The response is `{"success", "message", "data": [{"rank", "title", "url", "description", "source"}]}`.
+- A `401` response means the token is invalid.
 
 ## Adapter contract
 
 - `provider/mrscraper.yaml` registers only `mrscraper_account`, `mrscraper_scraper_api`, and `mrscraper_web_search`.
-- The provider owns the `api_token` credential and validates it through the SDK's `account()` method. Credentials are never tool parameters.
-- Tool YAML files define the Dify interface; the corresponding Python files validate parameters and call the matching SDK method.
-- All SDK methods are asynchronous. The Dify adapter runs them through the shared synchronous bridge used by tool invocation and credential validation.
-- Pass `browser_rendering` and `stream` to the SDK as `None`, `True`, or `False`, mapping the Dify select values `auto`, `true`, and `false` respectively. Preserve explicit false and zero values for other options.
-- Parse `headers` as a JSON object string. Pass `cookie_jar` as a string. The SDK handles request serialization and screenshot/browser-rendering behavior.
-- Return the SDK's inner `data` only. Emit objects and arrays as Dify JSON messages, strings unchanged as text, and scalar values as text. HTTP status and response headers are transport metadata and are omitted from tool content.
-- Convert SDK authentication, HTTP, network, and parameter errors into useful Dify errors without exposing the provider token.
-
-Web Search's SDK default `raw=True` overrides `format`. Keep this behavior explicit in the schema, descriptions, and tests: parsed JSON requires `raw=False`. Pagination requests one page per call, and explicit region, language, or page options override values parsed from a search URL.
+- The provider owns the `api_token` credential and validates it through the Account request. Credentials are never tool parameters.
+- Tool YAML files define the Dify interface; `common/parameters.py` validates parameters before any HTTP request, and the corresponding Python files call the matching client method.
+- Map the Dify select values `auto`, `true`, and `false` for `browser_rendering` and `stream` to `None`, `True`, and `False`. Preserve explicit false and zero values for other options.
+- Parse `headers` as a JSON object string. Pass `cookie_jar` as a string.
+- Emit objects and arrays as Dify JSON messages, strings unchanged as text, binary data as blobs, and scalar values as text. HTTP status and response headers are omitted from tool content.
+- Convert HTTP, network, and parameter errors into useful Dify errors without exposing the provider token or configured proxy, cookie, header, and discard-token secrets.
 
 ## Verification
 
-Use mocked SDK calls or mocked HTTP transports for automated tests. Tests should establish that the three registered schemas load, inputs reach the correct SDK method, credentials stay at provider level, error messages do not expose the token, and JSON/text outputs retain their native shape. Cover `raw`/`format`, browser-rendering and stream select conversion, explicit false/zero values, and search URL pagination overrides.
+Automated tests replace `MrscraperClient.transport` with an in-memory `httpx.MockTransport`. Tests should establish that the three registered schemas load, inputs reach the correct endpoint with the correct method, query, and body, credentials stay at provider level, error messages do not expose secrets, and JSON/text outputs retain their native shape.
 
-Account's safe-summary and the SDK's wire serialization are SDK responsibilities. Adapter tests should focus on Dify behavior and avoid live calls. Run live checks only when explicitly requested and use a token supplied through Dify credentials.
+Run live checks only when explicitly requested, with a token supplied through the environment or Dify credentials. Never write tokens to files.
 
 For a Dify development connection, copy `.env.example` to `.env`, configure the deployment's debug connection, then run:
 
@@ -39,12 +43,12 @@ For a Dify development connection, copy `.env.example` to `.env`, configure the 
 uv run python -m main
 ```
 
-Keep `.env` and tokens out of source control and packaged artifacts. For release 0.1.0, review the README migration section because all 18 tool IDs from 0.0.1 were replaced.
+Keep `.env` and tokens out of source control and packaged artifacts.
 
 ## Release consistency
 
-Keep the plugin version consistent across project metadata and `manifest.yaml`. Confirm that network permissions in the manifest match the SDK requirements and that the runner uses Python 3.12. Check the 660-second plugin request ceiling in `main.py`. Account defaults to 30 seconds; Scraper API defaults to 120 seconds plus 30 seconds for transport; Web Search defaults to 600 seconds. Infrastructure may impose shorter deadlines.
+Keep the plugin version consistent across `pyproject.toml` and `manifest.yaml`. Confirm that the manifest network domains (`api.app.mrscraper.com`, `api.mrscraper.com`) match the client endpoints and that the runner uses Python 3.12. Check the 660-second plugin request ceiling in `main.py`. Account defaults to 30 seconds; Scraper API defaults to 120 seconds plus 30 seconds for transport; Web Search uses 600 seconds. Infrastructure may impose shorter deadlines.
 
 Before packaging, run tests and lint, check dependencies and the lockfile, and review README and PRIVACY against the final code. Packaging and publication are separate release actions; this guide does not perform them.
 
-[Plugin source](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-three-tools-source/mrscraper)
+[Plugin source](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-0.2.0-source/mrscraper)

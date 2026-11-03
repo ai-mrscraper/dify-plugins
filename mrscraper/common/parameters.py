@@ -15,6 +15,9 @@ from common.validation import (
     web_url,
 )
 
+MIN_SEARCH_RESULTS = 10
+MAX_SEARCH_RESULTS = 100
+
 
 def seconds(value: Any, default: float) -> float:
     candidate = default if value is None else value
@@ -63,6 +66,7 @@ def scraper_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
         "proxy_country",
         "proxy",
         "wait_for_selector",
+        "wait_until",
         "cookie_jar",
         "discard_token_secret",
     ):
@@ -86,20 +90,27 @@ def scraper_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
         if headers is not None and any(not isinstance(value, str) for value in headers.values()):
             raise ParameterValidationError("headers values must be strings.")
         result["headers"] = headers
+    if not (result.get("html", True) or result.get("markdown") or result.get("screenshot")):
+        raise ParameterValidationError(
+            "At least one of html, markdown, or screenshot must be true."
+        )
     return result
 
 
 def search_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    result: dict[str, Any] = {"url": nonblank_string(parameters.get("url"), "url")}
-    for name, default in (("raw", True), ("render_js", False)):
-        if name in parameters:
-            result[name] = boolean(parameters[name], name, default=default)
-    for name in ("region", "language"):
-        if name in parameters:
-            result[name] = optional_string(parameters[name], name)
-    if "page" in parameters:
-        result["page"] = optional_integer(parameters["page"], "page", minimum=1)
-    if "format" in parameters:
-        result["format"] = choice(parameters["format"], "format", {"json", "html"}, default="json")
-    result["timeout"] = seconds(parameters.get("timeout"), 600)
+    result: dict[str, Any] = {"query": nonblank_string(parameters.get("query"), "query")}
+    country = optional_string(parameters.get("country"), "country")
+    if country is not None:
+        result["country"] = country
+    num_results = integer(
+        parameters.get("num_results"),
+        "num_results",
+        default=MIN_SEARCH_RESULTS,
+        minimum=MIN_SEARCH_RESULTS,
+    )
+    if num_results > MAX_SEARCH_RESULTS:
+        raise ParameterValidationError(
+            f"num_results must be between {MIN_SEARCH_RESULTS} and {MAX_SEARCH_RESULTS}."
+        )
+    result["num_results"] = num_results
     return result

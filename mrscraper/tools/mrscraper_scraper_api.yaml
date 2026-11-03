@@ -5,8 +5,8 @@ identity:
     en_US: Scraper API
 description:
   human:
-    en_US: Fetch HTML, Markdown, or screenshots through the MrScraper Scraper API.
-  llm: Fetch HTML, Markdown, or screenshots through the MrScraper Scraper API.
+    en_US: Fetch a public web page as rendered HTML, Markdown, screenshot, or a combination.
+  llm: Fetch a public web page as rendered HTML, Markdown, screenshot, or a combination.
 parameters:
 - name: url
   type: string
@@ -23,8 +23,9 @@ parameters:
   label:
     en_US: HTML
   human_description:
-    en_US: Include HTML in the response.
-  llm_description: Include HTML in the response.
+    en_US: Include HTML in the response. At least one of HTML, Markdown, or Screenshot must be enabled.
+  llm_description: Include HTML in the response. At least one of html, markdown, or screenshot
+    must be true.
   form: llm
   default: true
 - name: markdown
@@ -43,8 +44,9 @@ parameters:
   label:
     en_US: Screenshot
   human_description:
-    en_US: Capture a screenshot. Also forces browser rendering.
-  llm_description: Capture a screenshot. Also forces browser rendering.
+    en_US: Capture a screenshot, returned as base64 in the JSON response. Also forces browser rendering.
+  llm_description: Capture a screenshot, returned as base64 in the JSON response. Also forces
+    browser rendering.
   form: llm
   default: false
 - name: browser_rendering
@@ -147,6 +149,15 @@ parameters:
     en_US: Optional CSS selector to wait for.
   llm_description: Optional CSS selector to wait for.
   form: llm
+- name: wait_until
+  type: string
+  required: false
+  label:
+    en_US: Wait Until
+  human_description:
+    en_US: Optional page lifecycle event to wait for, such as domcontentloaded.
+  llm_description: Optional page lifecycle event to wait for, such as domcontentloaded.
+  form: llm
 - name: block_resources
   type: boolean
   required: false
@@ -215,8 +226,8 @@ parameters:
   label:
     en_US: Stream
   human_description:
-    en_US: Request buffering mode. The SDK buffers streamed responses before returning.
-  llm_description: Request buffering mode. The SDK buffers streamed responses before
+    en_US: Request buffering mode. The plugin buffers streamed responses before returning.
+  llm_description: Request buffering mode. The plugin buffers streamed responses before
     returning.
   form: llm
   default: auto

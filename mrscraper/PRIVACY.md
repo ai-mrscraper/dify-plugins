@@ -1,16 +1,16 @@
 # Privacy Policy for the MrScraper Dify Plugin
 
-Last updated: October 30, 2026
+Last updated: November 3, 2026
 
-This policy describes data processing performed by the MrScraper Dify plugin, version 0.1.1. The plugin uses the MrScraper Python SDK (`mrscraper-sdk==0.6.0`) for Account, Scraper API, and Web Search. Use of the service is also governed by MrScraper's [Privacy Policy](https://mrscraper.com/privacy-policy) and [Data Protection Policy](https://mrscraper.com/data-protection-policy).
+This policy describes data processing performed by the MrScraper Dify plugin, version 0.2.0. The plugin calls the MrScraper API at `api.mrscraper.com` (Scraper API and Web Search) and `api.app.mrscraper.com` (Account) over HTTPS. Use of the service is also governed by MrScraper's [Privacy Policy](https://mrscraper.com/privacy-policy) and [Data Protection Policy](https://mrscraper.com/data-protection-policy).
 
 ## Data sent to MrScraper
 
 The plugin sends the provider's API token and the information needed for the selected operation:
 
 - **Account:** the authentication token.
-- **Scraper API:** the target URL; requested HTML, Markdown, or screenshot output; rendering and real device routing settings; geolocation and proxy country; a custom proxy value, which may contain proxy credentials; target request headers; cookie-jar configuration; selector waiting and home-page navigation settings; resource and proxy controls; timeout, retries, token budget, and stream options; and an optional discard-token secret.
-- **Web Search:** the search query, region, language, result page, output format, and JavaScript rendering preference.
+- **Scraper API:** the target URL; requested HTML, Markdown, or screenshot output; rendering and real device routing settings; geolocation and proxy country; a custom proxy value, which may contain proxy credentials; target request headers; cookie-jar configuration; selector, lifecycle-event waiting, and home-page navigation settings; resource and proxy controls; timeout, retries, token budget, and stream options; and an optional discard-token secret.
+- **Web Search:** the search query, the optional country, and the requested number of results.
 
 MrScraper fetches the requested content or search results and returns the response to the plugin. Depending on the operation, this may include account identity and quota information, page HTML, Markdown, screenshots, or search data. Target content and user-provided headers, cookie configuration, or proxy settings may contain personal or confidential information.
 
@@ -20,9 +20,9 @@ Target websites are accessed by the MrScraper service rather than directly by th
 
 ## Credentials and returned data
 
-Dify stores the provider-level API token under the deployment's credential controls and supplies it at runtime. The token is not a tool parameter. The SDK sends it in authentication headers; Scraper API also includes it in the HTTPS request query. The plugin sanitizes its API token from reported errors.
+Dify stores the provider-level API token under the deployment's credential controls and supplies it at runtime. The token is not a tool parameter. The plugin sends it in the `x-api-token` request header (Account also sends it as a bearer token); Scraper API also includes it in the HTTPS request query string, together with the target URL and page options. The plugin sanitizes its API token from reported errors.
 
-Account output contains a safe summary of identity, subscription, quota, and rate limits. The SDK excludes API keys and billing identifiers from that summary. The plugin returns the SDK's inner response data to Dify and omits the HTTP envelope and response headers. Page content and search results are returned as supplied by the service.
+Account output contains a safe summary of identity, subscription, quota, and rate limits. The plugin excludes API keys and billing identifiers from that summary. The plugin returns the response data to Dify and omits HTTP status codes and response headers. Page content and search results are returned as supplied by the service.
 
 ## Storage and logging
 
@@ -38,4 +38,4 @@ Submit and process only data you are authorized to access. Choose target headers
 
 ## Contact
 
-For plugin information, see the [source repository](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-three-tools-source/mrscraper). For support or MrScraper privacy questions, contact `support@mrscraper.com` or use the contact details in MrScraper's privacy policy.
+For plugin information, see the [source repository](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-0.2.0-source/mrscraper). For support or MrScraper privacy questions, contact `support@mrscraper.com` or use the contact details in MrScraper's privacy policy.

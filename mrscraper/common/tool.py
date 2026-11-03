@@ -18,5 +18,7 @@ class MrscraperTool(Tool):
     def _messages(self, data: Any) -> Generator[ToolInvokeMessage, None, None]:
         if isinstance(data, dict | list):
             yield self.create_json_message(data)
+        elif isinstance(data, bytes):
+            yield self.create_blob_message(data, meta={"mime_type": "application/octet-stream"})
         else:
             yield self.create_text_message(data if isinstance(data, str) else json.dumps(data))

@@ -1,2 +1,2 @@
 dify-plugin==0.10.2
-mrscraper-sdk==0.6.0
+httpx==0.28.1
