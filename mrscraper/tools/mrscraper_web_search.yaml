@@ -5,8 +5,8 @@ identity:
     en_US: Web Search
 description:
   human:
-    en_US: Searches the web to retrieve real-time results, including relevant website URLs, titles, descriptions, and related questions based on a given query.
-  llm: Searches the web to retrieve real-time results, including relevant website URLs, titles, descriptions, and related questions based on a given query.
+    en_US: "Search the web for real-time results: website URLs, titles, and descriptions."
+  llm: "Search the web for real-time results: website URLs, titles, and descriptions."
 parameters:
 - name: query
   type: string

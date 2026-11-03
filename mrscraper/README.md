@@ -21,7 +21,7 @@ Your Dify deployment must allow outbound HTTPS connections to `api.mrscraper.com
 | --- | --- | --- |
 | Account | `mrscraper_account` | Read account identity, subscription, token quota, and rate limits. |
 | Scraper API | `mrscraper_scraper_api` | Fetch a public web page as rendered HTML, Markdown, screenshot, or a combination. |
-| Web Search | `mrscraper_web_search` | Searches the web to retrieve real-time results, including relevant website URLs, titles, descriptions, and related questions based on a given query. |
+| Web Search | `mrscraper_web_search` | Search the web for real-time results: website URLs, titles, and descriptions. |
 
 ### Account
 
@@ -68,7 +68,7 @@ Requesting HTML only returns the page HTML as a text message. Any combination th
 
 ### Web Search
 
-Searches the web to retrieve real-time results, including relevant website URLs, titles, descriptions, and related questions based on a given query.
+Search the web for real-time results: website URLs, titles, and descriptions.
 
 ```json
 {
