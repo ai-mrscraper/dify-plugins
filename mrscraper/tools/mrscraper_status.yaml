@@ -1,0 +1,15 @@
+identity:
+  name: mrscraper_status
+  author: ai-mrscraper
+  label:
+    en_US: Status
+description:
+  human:
+    en_US: Return the raw account status API response without summarizing, redacting body fields, or adding
+      calculated fields.
+  llm: Return the raw account status API response without summarizing, redacting body fields, or adding
+    calculated fields.
+parameters: []
+extra:
+  python:
+    source: tools/mrscraper_status.py

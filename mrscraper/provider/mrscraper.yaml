@@ -4,7 +4,8 @@ identity:
   label:
     en_US: MrScraper
   description:
-    en_US: MrScraper Account, Scraper API, and Web Search.
+    en_US: MrScraper Status, Scrape HTML, Scrape Markdown, Get screenshot, Scrape brand, Scrape JSON,
+      and Web search.
   icon: icon.svg
   tags:
   - search
@@ -21,8 +22,12 @@ credentials_for_provider:
       en_US: Create or copy an API token from your MrScraper account.
     url: https://app.mrscraper.com
 tools:
-- tools/mrscraper_account.yaml
-- tools/mrscraper_scraper_api.yaml
+- tools/mrscraper_status.yaml
+- tools/mrscraper_scrape_html.yaml
+- tools/mrscraper_scrape_markdown.yaml
+- tools/mrscraper_get_screenshot.yaml
+- tools/mrscraper_scrape_brand.yaml
+- tools/mrscraper_scrape_json.yaml
 - tools/mrscraper_web_search.yaml
 extra:
   python:

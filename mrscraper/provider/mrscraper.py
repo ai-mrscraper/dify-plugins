@@ -10,6 +10,6 @@ class MrscraperProvider(ToolProvider):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         token = credentials.get("api_token")
         try:
-            MrscraperClient(token if isinstance(token, str) else "").invoke("account", {})
+            MrscraperClient(token if isinstance(token, str) else "").invoke("status", {})
         except MrscraperAPIError as exc:
             raise ToolProviderCredentialValidationError(str(exc)) from None

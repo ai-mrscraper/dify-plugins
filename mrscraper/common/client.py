@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-import math
 from typing import Any
 from urllib.parse import quote, quote_plus, urlencode
 
@@ -9,8 +8,23 @@ import httpx
 
 API_URL = "https://api.mrscraper.com"
 ACCOUNT_URL = "https://api.app.mrscraper.com/api/v1/subscription-accounts"
-WEB_SEARCH_TIMEOUT = 600.0
+DEFAULT_JSON_PROMPT = "Extract all data as complete as possible."
+STATUS_TIMEOUT = 600.0
+BRAND_AND_SEARCH_TIMEOUT = 120.0
+TRANSPORT_GRACE_SECONDS = 30
+MAX_GET_URL_LENGTH = 8000
 TEXT_TYPES = {"application/xml", "application/xhtml+xml", "application/javascript"}
+OPERATIONS = frozenset(
+    {
+        "status",
+        "scrape_html",
+        "scrape_markdown",
+        "get_screenshot",
+        "scrape_brand",
+        "scrape_json",
+        "web_search",
+    }
+)
 UNAUTHORIZED_MESSAGE = (
     "Unauthorized or invalid token. Please go to https://app.mrscraper.com to get your token."
 )
@@ -37,25 +51,20 @@ def sanitize_error(message: str, secrets: list[str]) -> str:
     return message
 
 
-def _compact(values: dict[str, Any]) -> dict[str, Any]:
-    """Remove unset values while preserving False, 0, and empty strings."""
-    return {key: value for key, value in values.items() if value is not None}
-
-
-def _number_or_zero(value: Any) -> float:
-    try:
-        parsed = float(value)
-    except (ValueError, TypeError):
-        return 0
-    return parsed if math.isfinite(parsed) else 0
-
-
-def _string_or_none(value: Any) -> str | None:
-    return value if isinstance(value, str) else None
+def _endpoint(params: dict[str, Any]) -> str:
+    """Serialize query values the way the MrScraper SDKs do: booleans become true/false."""
+    values = {
+        key: str(value).lower() if isinstance(value, bool) else str(value)
+        for key, value in params.items()
+    }
+    return f"{API_URL}?{urlencode(values)}"
 
 
 class MrscraperClient:
-    """Synchronous HTTP client for the MrScraper endpoints used by the plugin."""
+    """Synchronous HTTP client for the seven MrScraper services.
+
+    Methods expect parameters already validated by ``common.parameters``.
+    """
 
     # Tests replace this with an in-memory transport.
     transport: httpx.BaseTransport | None = None
@@ -66,152 +75,185 @@ class MrscraperClient:
         self._token = token.strip()
 
     def invoke(self, operation: str, parameters: dict[str, Any]) -> Any:
-        if operation not in {"account", "scraper_api", "web_search"}:
+        if operation not in OPERATIONS:
             raise ValueError("Unsupported MrScraper operation.")
         try:
             return getattr(self, operation)(**parameters)
         except (MrscraperAPIError, httpx.HTTPError, ValueError) as exc:
             secrets = [self._token]
-            secrets.extend(
-                value
-                for name, value in parameters.items()
-                if name in {"proxy", "cookie_jar", "discard_token_secret"}
-                and isinstance(value, str)
-            )
-            headers = parameters.get("headers")
-            if isinstance(headers, dict):
-                secrets.extend(value for value in headers.values() if isinstance(value, str))
+            proxy = parameters.get("proxy")
+            if isinstance(proxy, str):
+                secrets.append(proxy)
             message = str(exc)
             if isinstance(exc, httpx.HTTPError):
                 message = f"MrScraper request failed: {type(exc).__name__}: {exc}"
             raise MrscraperAPIError(sanitize_error(message, secrets)) from None
 
-    def account(self, *, timeout: float = 30.0) -> dict[str, Any]:
-        """Return a safe summary of identity, subscription, quota, and rate limits."""
-        headers = {
+    def _headers(self) -> dict[str, str]:
+        return {
             "Content-Type": "application/json",
             "accept": "application/json",
             "Authorization": f"Bearer {self._token}",
             "x-api-token": self._token,
         }
-        body = self._request("GET", ACCOUNT_URL, headers=headers, timeout=timeout)
-        details = body.get("data", body) if isinstance(body, dict) else body
-        if not isinstance(details, dict):
-            raise MrscraperAPIError("Account response must contain an object.")
-        token_limit = _number_or_zero(details.get("tokenLimit"))
-        token_usage = _number_or_zero(details.get("tokenUsage"))
-        user = details.get("user")
-        if not isinstance(user, dict):
-            user = {}
-        return {
-            "subscription_status": _string_or_none(details.get("stripeStatus")),
-            "enterprise": bool(details.get("isEnterprise")),
-            "token_usage": token_usage,
-            "token_limit": token_limit,
-            "token_remaining": max(0, token_limit - token_usage),
-            "usage_percent": round(token_usage / token_limit * 100, 2) if token_limit > 0 else 0,
-            "rate_limit": _number_or_zero(details.get("rateLimit")),
-            "rate_ttl": _number_or_zero(details.get("rateTtl")),
-            "auto_renew": bool(details.get("isAutoRenew")),
-            "ends_at": _string_or_none(details.get("endsAt")),
-            "user": {
-                "name": _string_or_none(user.get("name")),
-                "email": _string_or_none(user.get("email")),
-                "verified": bool(user.get("isVerified")),
-            },
-        }
 
-    def scraper_api(
-        self,
+    # Status
+
+    def status(self) -> Any:
+        """Return the raw account status API response body."""
+        return self._request("GET", ACCOUNT_URL, timeout=STATUS_TIMEOUT)
+
+    # Page services
+
+    @staticmethod
+    def _page_params(
         *,
         url: str,
-        html: bool = True,
-        markdown: bool = False,
-        screenshot: bool = False,
-        timeout: int = 120,
-        geo_code: str = "US",
-        proxy_country: str | None = None,
-        browser_rendering: bool | None = None,
+        timeout: int = 300,
+        geo_code: str = "us",
+        proxy_country: str = "us",
         super: bool = False,
-        use_proxy: bool = True,
+        wait_until: str = "domcontentloaded",
         proxy: str | None = None,
-        wait_for_selector: str | None = None,
-        wait_until: str | None = None,
-        home_page: bool = False,
-        block_resources: bool = False,
-        bypass_proxy: bool = False,
-        cookie_jar: str | None = None,
-        headers: dict[str, str] | None = None,
-        max_retries: int = 3,
-        token_cap: int | None = None,
-        stream: bool | None = None,
-        discard_token_secret: str | None = None,
-    ) -> Any:
-        """Fetch a page with GET; the target URL and every option go in the query string."""
-        if not (html or markdown or screenshot):
-            raise ValueError("At least one of html, markdown, or screenshot must be true.")
-        query = _compact(
-            {
-                "token": self._token,
-                "url": url,
-                "html": html,
-                "markdown": markdown,
-                "screenshot": True if screenshot else None,
-                "timeout": timeout,
-                "geoCode": geo_code,
-                "proxyCountry": proxy_country,
-                "browserRendering": True if screenshot else browser_rendering,
-                "super": True if super else None,
-                "useProxy": None if use_proxy else False,
-                "proxy": proxy,
-                "waitForSelector": wait_for_selector,
-                "waitUntil": wait_until,
-                "warmStart": True if home_page else None,
-                "blockResources": True if block_resources else None,
-                "bypassProxy": True if bypass_proxy else None,
-                "cookieJar": cookie_jar,
-                "headers": json.dumps(headers) if headers is not None else None,
-                "stream": stream,
-                "maxRetries": max_retries,
-                "tokenCap": token_cap,
-            }
-        )
-        encoded = {
-            key: str(value).lower() if isinstance(value, bool) else str(value)
-            for key, value in query.items()
+        max_retries: int | None = None,
+        save_result: bool = False,
+    ) -> dict[str, Any]:
+        params: dict[str, Any] = {
+            "url": url,
+            "super": super,
+            "waitUntil": wait_until,
+            "timeout": timeout,
+            "geoCode": geo_code,
+            "proxyCountry": proxy_country,
+            "saveResult": save_result,
         }
-        request_headers = {"x-api-token": self._token}
-        if discard_token_secret:
-            request_headers["x-discard-token-secret"] = discard_token_secret
+        if proxy is not None:
+            params["proxy"] = proxy
+        if max_retries is not None:
+            params["maxRetries"] = max_retries
+        return params
+
+    @classmethod
+    def _loading_params(
+        cls,
+        *,
+        block_resources: bool = False,
+        wait_for_selector: str | None = None,
+        return_cookie: bool = False,
+        **page: Any,
+    ) -> dict[str, Any]:
+        params = cls._page_params(**page)
+        if wait_for_selector is not None:
+            params["waitForSelector"] = wait_for_selector
+        params["blockResources"] = block_resources
+        params["returnCookie"] = return_cookie
+        return params
+
+    def _page_request(self, params: dict[str, Any]) -> Any:
         return self._request(
-            "GET",
-            f"{API_URL}?{urlencode(encoded)}",
-            headers=request_headers,
-            timeout=float(timeout + 30),
+            "GET", _endpoint(params), timeout=float(params["timeout"] + TRANSPORT_GRACE_SECONDS)
         )
 
-    def web_search(
+    def scrape_html(
+        self, *, browser_rendering: bool = False, warm_start: bool = False, **page: Any
+    ) -> Any:
+        """Retrieve the raw HTML of a page. Browser rendering is optional."""
+        params = self._loading_params(**page)
+        params.update(
+            browserRendering=browser_rendering,
+            warmStart=warm_start,
+            html=True,
+            markdown=False,
+            screenshot=False,
+        )
+        return self._page_request(params)
+
+    def scrape_markdown(
         self,
         *,
-        query: str,
-        country: str | None = None,
-        num_results: int = 10,
+        browser_rendering: bool = False,
+        warm_start: bool = False,
+        html: bool = False,
+        **page: Any,
     ) -> Any:
-        """Run a web search through a JSON POST with the websearch action."""
-        payload = _compact(
-            {
-                "action": "websearch",
-                "query": query,
-                "country": country,
-                "numResults": num_results,
-            }
+        """Retrieve a page as Markdown; including HTML also enables browser rendering."""
+        params = self._loading_params(**page)
+        params.update(
+            # The API fails for html+markdown without browser rendering.
+            browserRendering=html or browser_rendering,
+            warmStart=warm_start,
+            html=html,
+            markdown=True,
+            screenshot=False,
         )
+        return self._page_request(params)
+
+    def get_screenshot(
+        self,
+        *,
+        warm_start: bool = False,
+        screenshot: str = "full",
+        html: bool = True,
+        markdown: bool = False,
+        **page: Any,
+    ) -> Any:
+        """Capture a base64 screenshot of the full page or top viewport."""
+        params = self._loading_params(**page)
+        params.update(
+            browserRendering=True,
+            warmStart=warm_start,
+            screenshot=screenshot,
+            html=html,
+            markdown=markdown,
+        )
+        return self._page_request(params)
+
+    def scrape_json(
+        self,
+        *,
+        prompt: str = DEFAULT_JSON_PROMPT,
+        browser_rendering: bool = False,
+        html: bool = False,
+        screenshot: bool = False,
+        **page: Any,
+    ) -> Any:
+        """Extract structured JSON from a page using a natural-language prompt."""
+        params = self._page_params(**page)
+        params.update(
+            browserRendering=browser_rendering,
+            html=html,
+            screenshot=screenshot,
+            agent="general",
+            prompt=prompt,
+        )
+        timeout = float(params["timeout"] + TRANSPORT_GRACE_SECONDS)
+        endpoint = _endpoint(params)
+        if len(endpoint) <= MAX_GET_URL_LENGTH:
+            return self._request("GET", endpoint, timeout=timeout)
+        body = {key: params.pop(key) for key in ("url", "prompt", "agent")}
+        return self._request("POST", _endpoint(params), timeout=timeout, payload=body)
+
+    def scrape_brand(self, *, url: str) -> Any:
+        """Extract a website's colors, typography, logos, and social links as JSON."""
         return self._request(
-            "POST",
-            API_URL,
-            headers={"x-api-token": self._token, "Content-Type": "application/json"},
-            payload=payload,
-            timeout=WEB_SEARCH_TIMEOUT,
+            "GET",
+            _endpoint({"action": "brand-scraping", "url": url, "bundle": "none"}),
+            timeout=BRAND_AND_SEARCH_TIMEOUT,
+        )
+
+    def web_search(self, *, query: str, country: str = "us", num_results: int = 10) -> Any:
+        """Search the web and return ranked results."""
+        return self._request(
+            "GET",
+            _endpoint(
+                {
+                    "action": "websearch",
+                    "query": query,
+                    "country": country,
+                    "numResults": num_results,
+                }
+            ),
+            timeout=BRAND_AND_SEARCH_TIMEOUT,
         )
 
     def _request(
@@ -219,7 +261,6 @@ class MrscraperClient:
         method: str,
         url: str,
         *,
-        headers: dict[str, str],
         timeout: float,
         payload: dict[str, Any] | None = None,
     ) -> Any:
@@ -227,7 +268,7 @@ class MrscraperClient:
             response = client.request(
                 method,
                 url,
-                headers=headers,
+                headers=self._headers(),
                 content=None if payload is None else json.dumps(payload),
             )
         if response.status_code == 401:

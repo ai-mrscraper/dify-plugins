@@ -1,0 +1,22 @@
+identity:
+  name: mrscraper_scrape_brand
+  author: ai-mrscraper
+  label:
+    en_US: Scrape brand
+description:
+  human:
+    en_US: Extract a website's colors, typography, logos, and social links as JSON.
+  llm: Extract a website's colors, typography, logos, and social links as JSON.
+parameters:
+- name: url
+  type: string
+  required: true
+  label:
+    en_US: URL
+  human_description:
+    en_US: Absolute HTTP or HTTPS URL of the page to process.
+  llm_description: Absolute HTTP or HTTPS URL of the page to process.
+  form: llm
+extra:
+  python:
+    source: tools/mrscraper_scrape_brand.py

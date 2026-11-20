@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import json
 import math
-from collections.abc import Mapping
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -28,16 +26,25 @@ def optional_string(value: Any, name: str) -> str | None:
 
 def web_url(value: Any, name: str = "url") -> str:
     result = nonblank_string(value, name)
-    parsed = urlsplit(result)
-    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+    try:
+        parsed = urlsplit(result)
+        valid = parsed.scheme.lower() in {"http", "https"} and bool(parsed.hostname)
+    except ValueError:
+        valid = False
+    if not valid:
         raise ParameterValidationError(f"{name} must be an absolute HTTP or HTTPS URL.")
     return result
 
 
 def integer(
-    value: Any, name: str, *, default: int | None = None, minimum: int | None = None
+    value: Any,
+    name: str,
+    *,
+    default: int | None = None,
+    minimum: int | None = None,
+    maximum: int | None = None,
 ) -> int:
-    candidate = default if value is None else value
+    candidate = default if value is None or value == "" else value
     if isinstance(candidate, bool) or not isinstance(candidate, int | float):
         raise ParameterValidationError(f"{name} must be an integer.")
     if isinstance(candidate, float) and (
@@ -47,6 +54,8 @@ def integer(
     result = int(candidate)
     if minimum is not None and result < minimum:
         raise ParameterValidationError(f"{name} must be at least {minimum}.")
+    if maximum is not None and result > maximum:
+        raise ParameterValidationError(f"{name} must be at most {maximum}.")
     return result
 
 
@@ -71,20 +80,8 @@ def choice(value: Any, name: str, allowed: set[str], *, default: str | None = No
     return candidate
 
 
-def json_object(
-    value: Any,
-    name: str,
-    *,
-    default: Mapping[str, Any] | None = None,
-) -> dict[str, Any] | None:
-    candidate = default if value is None else value
-    if candidate is None or candidate == "":
-        return None
-    if isinstance(candidate, str):
-        try:
-            candidate = json.loads(candidate)
-        except json.JSONDecodeError as exc:
-            raise ParameterValidationError(f"{name} must contain valid JSON.") from exc
-    if not isinstance(candidate, Mapping):
-        raise ParameterValidationError(f"{name} must be a JSON object.")
-    return dict(candidate)
+def country_code(value: Any, name: str, *, default: str) -> str:
+    candidate = optional_string(value, name) or default
+    if len(candidate) != 2 or not candidate.isascii() or not candidate.isalpha():
+        raise ParameterValidationError(f"{name} must be a two-letter country code.")
+    return candidate.lower()
