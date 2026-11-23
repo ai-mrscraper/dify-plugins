@@ -81,9 +81,6 @@ class MrscraperClient:
             return getattr(self, operation)(**parameters)
         except (MrscraperAPIError, httpx.HTTPError, ValueError) as exc:
             secrets = [self._token]
-            proxy = parameters.get("proxy")
-            if isinstance(proxy, str):
-                secrets.append(proxy)
             message = str(exc)
             if isinstance(exc, httpx.HTTPError):
                 message = f"MrScraper request failed: {type(exc).__name__}: {exc}"
@@ -106,126 +103,88 @@ class MrscraperClient:
     # Page services
 
     @staticmethod
-    def _page_params(
+    def _page_fields(
         *,
         url: str,
         timeout: int = 300,
-        geo_code: str = "us",
-        proxy_country: str = "us",
-        super: bool = False,
-        wait_until: str = "domcontentloaded",
-        proxy: str | None = None,
-        max_retries: int | None = None,
-        save_result: bool = False,
-    ) -> dict[str, Any]:
-        params: dict[str, Any] = {
-            "url": url,
-            "super": super,
-            "waitUntil": wait_until,
-            "timeout": timeout,
-            "geoCode": geo_code,
-            "proxyCountry": proxy_country,
-            "saveResult": save_result,
-        }
-        if proxy is not None:
-            params["proxy"] = proxy
-        if max_retries is not None:
-            params["maxRetries"] = max_retries
-        return params
-
-    @classmethod
-    def _loading_params(
-        cls,
-        *,
-        block_resources: bool = False,
         wait_for_selector: str | None = None,
-        return_cookie: bool = False,
-        **page: Any,
+        geo_code: str | None = None,
+        save_result: bool = True,
+        max_age: int = 0,
+        token_cap: int | None = None,
+        max_retries: int | None = None,
+        browser_rendering: bool | None = None,
+        warm_start: bool | None = None,
+        block_resources: bool | None = None,
+        action: str | None = None,
     ) -> dict[str, Any]:
-        params = cls._page_params(**page)
-        if wait_for_selector is not None:
-            params["waitForSelector"] = wait_for_selector
-        params["blockResources"] = block_resources
-        params["returnCookie"] = return_cookie
-        return params
+        """Return the shared fields in the documented request order, without unset values."""
+        fields = {
+            "browserRendering": browser_rendering,
+            "timeout": timeout,
+            "warmStart": warm_start,
+            "blockResources": block_resources,
+            "waitForSelector": wait_for_selector,
+            "action": action,
+            "geoCode": geo_code,
+            "saveResult": save_result,
+            "maxAge": max_age,
+            "tokenCap": token_cap,
+            "maxRetries": max_retries,
+        }
+        return {"url": url} | {key: value for key, value in fields.items() if value is not None}
 
     def _page_request(self, params: dict[str, Any]) -> Any:
         return self._request(
             "GET", _endpoint(params), timeout=float(params["timeout"] + TRANSPORT_GRACE_SECONDS)
         )
 
+    @staticmethod
+    def _after_url(fixed: dict[str, Any], fields: dict[str, Any]) -> dict[str, Any]:
+        """Place a service's fixed fields right after url."""
+        return {"url": fields["url"], **fixed} | {k: v for k, v in fields.items() if k != "url"}
+
     def scrape_html(
-        self, *, browser_rendering: bool = False, warm_start: bool = False, **page: Any
+        self,
+        *,
+        warm_start: bool = False,
+        block_resources: bool = False,
+        screenshot: str | bool = False,
+        **page: Any,
     ) -> Any:
         """Retrieve the raw HTML of a page. Browser rendering is optional."""
-        params = self._loading_params(**page)
-        params.update(
-            browserRendering=browser_rendering,
-            warmStart=warm_start,
-            html=True,
-            markdown=False,
-            screenshot=False,
+        fields = self._page_fields(warm_start=warm_start, block_resources=block_resources, **page)
+        return self._page_request(
+            self._after_url({"html": True}, fields) | {"screenshot": screenshot}
         )
-        return self._page_request(params)
 
     def scrape_markdown(
-        self,
-        *,
-        browser_rendering: bool = False,
-        warm_start: bool = False,
-        html: bool = False,
-        **page: Any,
+        self, *, warm_start: bool = False, block_resources: bool = False, **page: Any
     ) -> Any:
-        """Retrieve a page as Markdown; including HTML also enables browser rendering."""
-        params = self._loading_params(**page)
-        params.update(
-            # The API fails for html+markdown without browser rendering.
-            browserRendering=html or browser_rendering,
-            warmStart=warm_start,
-            html=html,
-            markdown=True,
-            screenshot=False,
-        )
-        return self._page_request(params)
+        """Retrieve a page as clean Markdown. Browser rendering is optional."""
+        fields = self._page_fields(warm_start=warm_start, block_resources=block_resources, **page)
+        return self._page_request(self._after_url({"markdown": True}, fields))
 
-    def get_screenshot(
-        self,
-        *,
-        warm_start: bool = False,
-        screenshot: str = "full",
-        html: bool = True,
-        markdown: bool = False,
-        **page: Any,
-    ) -> Any:
-        """Capture a base64 screenshot of the full page or top viewport."""
-        params = self._loading_params(**page)
-        params.update(
-            browserRendering=True,
-            warmStart=warm_start,
-            screenshot=screenshot,
-            html=html,
-            markdown=markdown,
-        )
-        return self._page_request(params)
+    def get_screenshot(self, **page: Any) -> Any:
+        """Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled."""
+        fields = self._page_fields(browser_rendering=True, **page)
+        return self._page_request(self._after_url({"screenshot": "full"}, fields))
 
     def scrape_json(
         self,
         *,
         prompt: str = DEFAULT_JSON_PROMPT,
-        browser_rendering: bool = False,
-        html: bool = False,
+        html: bool = True,
         screenshot: bool = False,
+        warm_start: bool = False,
+        block_resources: bool = False,
         **page: Any,
     ) -> Any:
         """Extract structured JSON from a page using a natural-language prompt."""
-        params = self._page_params(**page)
-        params.update(
-            browserRendering=browser_rendering,
-            html=html,
-            screenshot=screenshot,
-            agent="general",
-            prompt=prompt,
-        )
+        fields = self._page_fields(warm_start=warm_start, block_resources=block_resources, **page)
+        params = self._after_url({"prompt": prompt, "agent": "general", "html": html}, fields) | {
+            "screenshot": screenshot
+        }
         timeout = float(params["timeout"] + TRANSPORT_GRACE_SECONDS)
         endpoint = _endpoint(params)
         if len(endpoint) <= MAX_GET_URL_LENGTH:
@@ -241,20 +200,13 @@ class MrscraperClient:
             timeout=BRAND_AND_SEARCH_TIMEOUT,
         )
 
-    def web_search(self, *, query: str, country: str = "us", num_results: int = 10) -> Any:
+    def web_search(self, *, query: str, country: str | None = None, num_results: int = 10) -> Any:
         """Search the web and return ranked results."""
-        return self._request(
-            "GET",
-            _endpoint(
-                {
-                    "action": "websearch",
-                    "query": query,
-                    "country": country,
-                    "numResults": num_results,
-                }
-            ),
-            timeout=BRAND_AND_SEARCH_TIMEOUT,
-        )
+        params: dict[str, Any] = {"action": "websearch", "query": query}
+        if country is not None:
+            params["country"] = country
+        params["numResults"] = num_results
+        return self._request("GET", _endpoint(params), timeout=BRAND_AND_SEARCH_TIMEOUT)
 
     def _request(
         self,

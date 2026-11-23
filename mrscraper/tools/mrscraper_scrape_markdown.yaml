@@ -5,10 +5,8 @@ identity:
     en_US: Scrape Markdown
 description:
   human:
-    en_US: Retrieve a page as Markdown. Including HTML also enables browser rendering and returns both
-      outputs as JSON.
-  llm: Retrieve a page as Markdown. Including HTML also enables browser rendering and returns both outputs
-    as JSON.
+    en_US: Retrieve a page as clean Markdown. Browser rendering is optional.
+  llm: Retrieve a page as clean Markdown. Browser rendering is optional.
 parameters:
 - name: url
   type: string
@@ -19,102 +17,53 @@ parameters:
     en_US: Absolute HTTP or HTTPS URL of the page to process.
   llm_description: Absolute HTTP or HTTPS URL of the page to process.
   form: llm
+- name: browser_rendering
+  type: select
+  required: false
+  label:
+    en_US: Browser Rendering
+  human_description:
+    en_US: 'Whether to load the page in a browser: true always does and false never does. Omit it to load
+      the page without a browser first and switch to a browser automatically if the request is blocked.'
+  llm_description: 'Whether to load the page in a browser: true always does and false never does. Omit
+    it to load the page without a browser first and switch to a browser automatically if the request is
+    blocked.'
+  form: llm
+  default: auto
+  options:
+  - value: auto
+    label:
+      en_US: Auto
+  - value: 'true'
+    label:
+      en_US: Always
+  - value: 'false'
+    label:
+      en_US: Never
 - name: timeout
   type: number
   required: false
   label:
     en_US: Timeout
   human_description:
-    en_US: Page load timeout in seconds, from 1 to 300. The HTTP request allows 30 additional seconds.
-  llm_description: Page load timeout in seconds, from 1 to 300. The HTTP request allows 30 additional
+    en_US: Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional
+      seconds.
+  llm_description: Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional
     seconds.
   form: llm
   default: 300
   min: 1
-  max: 300
+  max: 330
   precision: 0
-- name: geo_code
-  type: string
-  required: false
-  label:
-    en_US: Geo Code
-  human_description:
-    en_US: Two-letter country code to load the page from, sent in lowercase.
-  llm_description: Two-letter country code to load the page from, sent in lowercase.
-  form: llm
-  default: us
-- name: proxy_country
-  type: string
-  required: false
-  label:
-    en_US: Proxy Country
-  human_description:
-    en_US: Two-letter country code of the proxy server, sent in lowercase.
-  llm_description: Two-letter country code of the proxy server, sent in lowercase.
-  form: llm
-  default: us
-- name: super
+- name: warm_start
   type: boolean
   required: false
   label:
-    en_US: Super
+    en_US: Warm Start
   human_description:
-    en_US: Whether to route the request through real devices.
-  llm_description: Whether to route the request through real devices.
-  form: llm
-  default: false
-- name: wait_until
-  type: select
-  required: false
-  label:
-    en_US: Wait Until
-  human_description:
-    en_US: 'Navigation completion event to wait for: domcontentloaded, load, networkidle0, or networkidle2.'
-  llm_description: 'Navigation completion event to wait for: domcontentloaded, load, networkidle0, or
-    networkidle2.'
-  form: llm
-  default: domcontentloaded
-  options:
-  - value: domcontentloaded
-    label:
-      en_US: DOM content loaded
-  - value: load
-    label:
-      en_US: Load
-  - value: networkidle0
-    label:
-      en_US: Network idle 0
-  - value: networkidle2
-    label:
-      en_US: Network idle 2
-- name: proxy
-  type: string
-  required: false
-  label:
-    en_US: Proxy
-  human_description:
-    en_US: Custom proxy URL used to load the page.
-  llm_description: Custom proxy URL used to load the page.
-  form: llm
-- name: max_retries
-  type: number
-  required: false
-  label:
-    en_US: Max Retries
-  human_description:
-    en_US: Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit.
-  llm_description: Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit.
-  form: llm
-  min: 0
-  precision: 0
-- name: save_result
-  type: boolean
-  required: false
-  label:
-    en_US: Save Result
-  human_description:
-    en_US: Whether to save the result to the dashboard Result tab.
-  llm_description: Whether to save the result to the dashboard Result tab.
+    en_US: Whether to open the site's home page first to warm the session before loading the target URL.
+  llm_description: Whether to open the site's home page first to warm the session before loading the target
+    URL.
   form: llm
   default: false
 - name: block_resources
@@ -133,50 +82,79 @@ parameters:
   label:
     en_US: Wait For Selector
   human_description:
-    en_US: Wait for the page to contain the specified CSS selector before returning the result.
-  llm_description: Wait for the page to contain the specified CSS selector before returning the result.
+    en_US: CSS selector or text to wait for on the page before returning the result, up to 500 characters.
+  llm_description: CSS selector or text to wait for on the page before returning the result, up to 500
+    characters.
   form: llm
-- name: return_cookie
+- name: action
+  type: string
+  required: false
+  label:
+    en_US: Action
+  human_description:
+    en_US: Scraper action that routes the request or simply flags it, useful for separating analytics
+      per domain.
+  llm_description: Scraper action that routes the request or simply flags it, useful for separating analytics
+    per domain.
+  form: llm
+- name: geo_code
+  type: string
+  required: false
+  label:
+    en_US: Geo Code
+  human_description:
+    en_US: Two-letter country code to load the page from, sent in lowercase.
+  llm_description: Two-letter country code to load the page from, sent in lowercase.
+  form: llm
+- name: save_result
   type: boolean
   required: false
   label:
-    en_US: Return Cookie
+    en_US: Save Result
   human_description:
-    en_US: Whether to include browser session cookies in the response.
-  llm_description: Whether to include browser session cookies in the response.
+    en_US: Whether to save the result to the dashboard Result tab.
+  llm_description: Whether to save the result to the dashboard Result tab.
   form: llm
-  default: false
-- name: browser_rendering
-  type: boolean
+  default: true
+- name: max_age
+  type: number
   required: false
   label:
-    en_US: Browser Rendering
+    en_US: Max Age
   human_description:
-    en_US: Whether to render the page in a browser before returning the result.
-  llm_description: Whether to render the page in a browser before returning the result.
+    en_US: Return a cached result of the same request when it is newer than the selected age. A cached
+      result costs the same tokens as the original scrape.
+  llm_description: Return a cached result of the same request when it is newer than the selected age.
+    A cached result costs the same tokens as the original scrape.
   form: llm
-  default: false
-- name: warm_start
-  type: boolean
+  default: 0
+  min: 0
+  max: 604800000
+  precision: 0
+- name: token_cap
+  type: number
   required: false
   label:
-    en_US: Warm Start
+    en_US: Token Cap
   human_description:
-    en_US: Whether to enable warm start for more reliable scraping, at the cost of additional latency.
-  llm_description: Whether to enable warm start for more reliable scraping, at the cost of additional
-    latency.
+    en_US: Maximum total tokens the scrape and its retries can use, as a positive integer. Omit this parameter
+      for no limit.
+  llm_description: Maximum total tokens the scrape and its retries can use, as a positive integer. Omit
+    this parameter for no limit.
   form: llm
-  default: false
-- name: html
-  type: boolean
+  min: 1
+  precision: 0
+- name: max_retries
+  type: number
   required: false
   label:
-    en_US: HTML
+    en_US: Max Retries
   human_description:
-    en_US: Whether to include the page HTML in the response.
-  llm_description: Whether to include the page HTML in the response.
+    en_US: Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit.
+  llm_description: Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit.
   form: llm
-  default: false
+  min: 0
+  precision: 0
 extra:
   python:
     source: tools/mrscraper_scrape_markdown.py

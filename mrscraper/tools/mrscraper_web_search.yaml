@@ -26,7 +26,6 @@ parameters:
     en_US: Two-letter country code to search from, sent in lowercase.
   llm_description: Two-letter country code to search from, sent in lowercase.
   form: llm
-  default: us
 - name: num_results
   type: number
   required: false

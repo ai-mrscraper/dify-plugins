@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import re
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -80,8 +81,50 @@ def choice(value: Any, name: str, allowed: set[str], *, default: str | None = No
     return candidate
 
 
-def country_code(value: Any, name: str, *, default: str) -> str:
-    candidate = optional_string(value, name) or default
+def optional_country_code(value: Any, name: str) -> str | None:
+    """Return a lowercase two-letter code, or None when the input is empty."""
+    candidate = optional_string(value, name)
+    if candidate is None:
+        return None
     if len(candidate) != 2 or not candidate.isascii() or not candidate.isalpha():
         raise ParameterValidationError(f"{name} must be a two-letter country code.")
     return candidate.lower()
+
+
+def optional_bounded_string(value: Any, name: str, *, max_length: int) -> str | None:
+    result = optional_string(value, name)
+    if result is not None and len(result) > max_length:
+        raise ParameterValidationError(f"{name} must be at most {max_length} characters.")
+    return result
+
+
+def optional_tristate(value: Any, name: str) -> bool | None:
+    """Map auto or an empty input to None (omitted), and true/false to booleans."""
+    if value is None or value == "" or value == "auto":
+        return None
+    if isinstance(value, bool):
+        return value
+    if value in {"true", "false"}:
+        return value == "true"
+    raise ParameterValidationError(f"{name} must be auto, true, or false.")
+
+
+_VIEWPORT = re.compile(r"^(\d{3,4})x(\d{3,4})(?:-(\d{2,3}))?$")
+
+
+def screenshot_capture(value: Any, name: str) -> str | bool:
+    """Accept false (or an empty input), full, top, or WIDTHxHEIGHT with an optional -ZOOM."""
+    if value is None or value is False or value in {"", "false"}:
+        return False
+    if value in {"full", "top"}:
+        return value
+    match = _VIEWPORT.match(value) if isinstance(value, str) else None
+    if match:
+        width, height = int(match[1]), int(match[2])
+        zoom = 100 if match[3] is None else int(match[3])
+        if 100 <= width <= 3840 and 100 <= height <= 3840 and 25 <= zoom <= 300:
+            return value
+    raise ParameterValidationError(
+        f"{name} must be false, full, top, or WIDTHxHEIGHT from 100 to 3840 pixels with an "
+        "optional -ZOOM from 25 to 300, such as 1280x800 or 1920x1080-75."
+    )

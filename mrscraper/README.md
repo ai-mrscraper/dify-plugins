@@ -2,7 +2,7 @@
 
 Use MrScraper in Dify Agents, Chatflows, and Workflows through seven tools: **Status**, **Scrape HTML**, **Scrape Markdown**, **Get screenshot**, **Scrape brand**, **Scrape JSON**, and **Web search**. The plugin calls the MrScraper HTTPS API directly with `httpx`. Descriptions, parameter meanings, and defaults follow the [MrScraper API reference](https://docs.mrscraper.com/docs/api/overview) shared by the MrScraper CLI, SDKs, and integrations.
 
-[Plugin source](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-0.3.0-source/mrscraper) · [Development guide](https://github.com/ai-mrscraper/dify-plugins/blob/feat/mrscraper-0.3.0-source/mrscraper/GUIDE.md) · [Privacy](PRIVACY.md)
+[Plugin source](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-0.4.0-source/mrscraper) · [Development guide](https://github.com/ai-mrscraper/dify-plugins/blob/feat/mrscraper-0.4.0-source/mrscraper/GUIDE.md) · [Privacy](PRIVACY.md)
 
 ## Setup
 
@@ -21,17 +21,19 @@ Your Dify deployment must allow outbound HTTPS connections to `api.mrscraper.com
 | --- | --- | --- |
 | [Status](#status) | `mrscraper_status` | Return the raw account status API response without summarizing, redacting body fields, or adding calculated fields. |
 | [Scrape HTML](#scrape-html) | `mrscraper_scrape_html` | Retrieve the raw HTML of a page. Browser rendering is optional. |
-| [Scrape Markdown](#scrape-markdown) | `mrscraper_scrape_markdown` | Retrieve a page as Markdown. Including HTML also enables browser rendering and returns both outputs as JSON. |
-| [Get screenshot](#get-screenshot) | `mrscraper_get_screenshot` | Capture a base64 screenshot of the full page or top viewport. Browser rendering is always enabled. |
+| [Scrape Markdown](#scrape-markdown) | `mrscraper_scrape_markdown` | Retrieve a page as clean Markdown. Browser rendering is optional. |
+| [Get screenshot](#get-screenshot) | `mrscraper_get_screenshot` | Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled. |
 | [Scrape brand](#scrape-brand) | `mrscraper_scrape_brand` | Extract a website's colors, typography, logos, and social links as JSON. |
 | [Scrape JSON](#scrape-json) | `mrscraper_scrape_json` | Extract structured JSON from a page using a natural-language prompt. Append Json Schema: and a JSON schema to shape the output. |
 | [Web search](#web-search) | `mrscraper_web_search` | Search the web and return ranked results with titles, URLs, descriptions, and sources. |
 
 ## Shared parameters
 
-HTML, Markdown, screenshots, and JSON extraction share `url`, `timeout`, `geo_code`, `proxy_country`, `super`, `wait_until`, `proxy`, `max_retries`, and `save_result`. Page defaults are 300 seconds, US geolocation and proxy country, real-device routing off, and dashboard saving off. Leave `max_retries` empty for no retry limit.
+HTML, Markdown, screenshots, and JSON extraction share `url`, `timeout`, `wait_for_selector`, `geo_code`, `save_result`, `max_age`, `token_cap`, and `max_retries`. Defaults are a 300-second timeout (up to 330), dashboard saving on, and a `max_age` of 0 milliseconds, which always scrapes fresh; `max_age` accepts up to 604800000 (7 days). Leave `geo_code`, `token_cap`, and `max_retries` empty to omit them, so the API loads the page from the United States with no token or retry limit.
 
-HTML, Markdown, and screenshots also accept `block_resources`, `wait_for_selector`, and `return_cookie`. JSON extraction does not accept these controls. Browser rendering is optional for HTML, Markdown, and JSON; screenshots always enable it. Markdown with HTML also enables browser rendering. `warm_start` is available for HTML, Markdown, and screenshots.
+HTML, Markdown, and JSON extraction also accept `browser_rendering`, `warm_start`, and `block_resources`; HTML and Markdown also accept `action`. `browser_rendering` is a select: `auto` (the default) leaves it out so the API loads the page without a browser first and switches to one if the request is blocked, `true` always renders, and `false` never does. `wait_for_selector` needs a rendered page, so do not combine it with `false`. Screenshots always render in a browser.
+
+Each tool adds its documented fixed request fields automatically: `html=true` for Scrape HTML, `markdown=true` for Scrape Markdown, `screenshot=full` and `browserRendering=true` for Get screenshot, `action=brand-scraping` and `bundle=none` for Scrape brand, `agent=general` for Scrape JSON, and `action=websearch` for Web search.
 
 Leave an optional input empty to use its default. Country codes are sent in lowercase.
 
@@ -79,119 +81,108 @@ Retrieve the raw HTML of a page. Browser rendering is optional.
 | Parameter | HTTP field | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `url` | `url` | string | Required | Absolute HTTP or HTTPS URL of the page to process. |
-| `timeout` | `timeout` | integer | `300` | Page load timeout in seconds, from 1 to 300. The HTTP request allows 30 additional seconds. |
-| `geo_code` | `geoCode` | string | `"us"` | Two-letter country code to load the page from, sent in lowercase. |
-| `proxy_country` | `proxyCountry` | string | `"us"` | Two-letter country code of the proxy server, sent in lowercase. |
-| `super` | `super` | boolean | `false` | Whether to route the request through real devices. |
-| `wait_until` | `waitUntil` | select: `domcontentloaded`, `load`, `networkidle0`, `networkidle2` | `"domcontentloaded"` | Navigation completion event to wait for: domcontentloaded, load, networkidle0, or networkidle2. |
-| `proxy` | `proxy` | string | Omitted | Custom proxy URL used to load the page. |
-| `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |
-| `save_result` | `saveResult` | boolean | `false` | Whether to save the result to the dashboard Result tab. |
+| `browser_rendering` | `browserRendering` | select: `auto`, `true`, `false` | `auto` (omitted) | Whether to load the page in a browser: true always does and false never does. Omit it to load the page without a browser first and switch to a browser automatically if the request is blocked. |
+| `timeout` | `timeout` | integer | `300` | Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional seconds. |
+| `warm_start` | `warmStart` | boolean | `false` | Whether to open the site's home page first to warm the session before loading the target URL. |
 | `block_resources` | `blockResources` | boolean | `false` | Whether to block images, fonts, and stylesheets while loading the page. |
-| `wait_for_selector` | `waitForSelector` | string | Omitted | Wait for the page to contain the specified CSS selector before returning the result. |
-| `return_cookie` | `returnCookie` | boolean | `false` | Whether to include browser session cookies in the response. |
-| `browser_rendering` | `browserRendering` | boolean | `false` | Whether to render the page in a browser before returning the result. |
-| `warm_start` | `warmStart` | boolean | `false` | Whether to enable warm start for more reliable scraping, at the cost of additional latency. |
+| `wait_for_selector` | `waitForSelector` | string | Omitted | CSS selector or text to wait for on the page before returning the result, up to 500 characters. |
+| `action` | `action` | string | Omitted | Scraper action that routes the request or simply flags it, useful for separating analytics per domain. |
+| `geo_code` | `geoCode` | string | Omitted | Two-letter country code to load the page from, sent in lowercase. |
+| `save_result` | `saveResult` | boolean | `true` | Whether to save the result to the dashboard Result tab. |
+| `max_age` | `maxAge` | integer | `0` | Return a cached result of the same request when it is newer than the selected age. A cached result costs the same tokens as the original scrape. |
+| `token_cap` | `tokenCap` | integer | Omitted | Maximum total tokens the scrape and its retries can use, as a positive integer. Omit this parameter for no limit. |
+| `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |
+| `screenshot` | `screenshot` | string | `false` | Screenshot to capture with the HTML: false for none, full for the entire page, top for the first viewport, or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an optional -ZOOM percent from 25 to 300, such as 1280x800 or 1920x1080-75. Any screenshot forces browser rendering. |
+
+The plugin sends `html=true`. Any screenshot forces browser rendering and returns JSON with `html` and `screenshot`.
 
 Example input:
 
 ```json
 {
   "url": "https://example.com",
-  "browser_rendering": true,
+  "browser_rendering": "true",
   "warm_start": true,
   "wait_for_selector": "body",
   "timeout": 120
 }
 ```
 
-The default response body is HTML text, returned as a text message. Additional controls can cause the API to return JSON; the returned structure is preserved.
+The response body is HTML text, returned as a text message. With a screenshot, the API returns JSON containing `html` and a base64 `screenshot`:
+
+```json
+{
+  "html": "<html>...</html>",
+  "screenshot": "BASE64_IMAGE_DATA"
+}
+```
 
 ## Scrape Markdown
 
-Retrieve a page as Markdown. Including HTML also enables browser rendering and returns both outputs as JSON.
+Retrieve a page as clean Markdown. Browser rendering is optional.
 
 | Parameter | HTTP field | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `url` | `url` | string | Required | Absolute HTTP or HTTPS URL of the page to process. |
-| `timeout` | `timeout` | integer | `300` | Page load timeout in seconds, from 1 to 300. The HTTP request allows 30 additional seconds. |
-| `geo_code` | `geoCode` | string | `"us"` | Two-letter country code to load the page from, sent in lowercase. |
-| `proxy_country` | `proxyCountry` | string | `"us"` | Two-letter country code of the proxy server, sent in lowercase. |
-| `super` | `super` | boolean | `false` | Whether to route the request through real devices. |
-| `wait_until` | `waitUntil` | select: `domcontentloaded`, `load`, `networkidle0`, `networkidle2` | `"domcontentloaded"` | Navigation completion event to wait for: domcontentloaded, load, networkidle0, or networkidle2. |
-| `proxy` | `proxy` | string | Omitted | Custom proxy URL used to load the page. |
-| `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |
-| `save_result` | `saveResult` | boolean | `false` | Whether to save the result to the dashboard Result tab. |
+| `browser_rendering` | `browserRendering` | select: `auto`, `true`, `false` | `auto` (omitted) | Whether to load the page in a browser: true always does and false never does. Omit it to load the page without a browser first and switch to a browser automatically if the request is blocked. |
+| `timeout` | `timeout` | integer | `300` | Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional seconds. |
+| `warm_start` | `warmStart` | boolean | `false` | Whether to open the site's home page first to warm the session before loading the target URL. |
 | `block_resources` | `blockResources` | boolean | `false` | Whether to block images, fonts, and stylesheets while loading the page. |
-| `wait_for_selector` | `waitForSelector` | string | Omitted | Wait for the page to contain the specified CSS selector before returning the result. |
-| `return_cookie` | `returnCookie` | boolean | `false` | Whether to include browser session cookies in the response. |
-| `browser_rendering` | `browserRendering` | boolean | `false` | Whether to render the page in a browser before returning the result. |
-| `warm_start` | `warmStart` | boolean | `false` | Whether to enable warm start for more reliable scraping, at the cost of additional latency. |
-| `html` | `html` | boolean | `false` | Whether to include the page HTML in the response. |
+| `wait_for_selector` | `waitForSelector` | string | Omitted | CSS selector or text to wait for on the page before returning the result, up to 500 characters. |
+| `action` | `action` | string | Omitted | Scraper action that routes the request or simply flags it, useful for separating analytics per domain. |
+| `geo_code` | `geoCode` | string | Omitted | Two-letter country code to load the page from, sent in lowercase. |
+| `save_result` | `saveResult` | boolean | `true` | Whether to save the result to the dashboard Result tab. |
+| `max_age` | `maxAge` | integer | `0` | Return a cached result of the same request when it is newer than the selected age. A cached result costs the same tokens as the original scrape. |
+| `token_cap` | `tokenCap` | integer | Omitted | Maximum total tokens the scrape and its retries can use, as a positive integer. Omit this parameter for no limit. |
+| `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |
+
+The plugin sends `markdown=true`.
 
 Example input:
 
 ```json
 {
   "url": "https://example.com",
-  "html": true,
-  "warm_start": true
+  "warm_start": true,
+  "max_age": 86400000
 }
 ```
 
-The default response body is Markdown text, returned as a text message. Enabling HTML returns JSON containing both HTML and Markdown:
-
-```json
-{
-  "html": "<html>...</html>",
-  "markdown": "# Example page\n\n..."
-}
-```
+The response body is Markdown text, returned as a text message.
 
 ## Get screenshot
 
-Capture a base64 screenshot of the full page or top viewport. Browser rendering is always enabled.
+Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled.
 
 | Parameter | HTTP field | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `url` | `url` | string | Required | Absolute HTTP or HTTPS URL of the page to process. |
-| `timeout` | `timeout` | integer | `300` | Page load timeout in seconds, from 1 to 300. The HTTP request allows 30 additional seconds. |
-| `geo_code` | `geoCode` | string | `"us"` | Two-letter country code to load the page from, sent in lowercase. |
-| `proxy_country` | `proxyCountry` | string | `"us"` | Two-letter country code of the proxy server, sent in lowercase. |
-| `super` | `super` | boolean | `false` | Whether to route the request through real devices. |
-| `wait_until` | `waitUntil` | select: `domcontentloaded`, `load`, `networkidle0`, `networkidle2` | `"domcontentloaded"` | Navigation completion event to wait for: domcontentloaded, load, networkidle0, or networkidle2. |
-| `proxy` | `proxy` | string | Omitted | Custom proxy URL used to load the page. |
+| `timeout` | `timeout` | integer | `300` | Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional seconds. |
+| `wait_for_selector` | `waitForSelector` | string | Omitted | CSS selector or text to wait for on the page before returning the result, up to 500 characters. |
+| `geo_code` | `geoCode` | string | Omitted | Two-letter country code to load the page from, sent in lowercase. |
+| `save_result` | `saveResult` | boolean | `true` | Whether to save the result to the dashboard Result tab. |
+| `max_age` | `maxAge` | integer | `0` | Return a cached result of the same request when it is newer than the selected age. A cached result costs the same tokens as the original scrape. |
+| `token_cap` | `tokenCap` | integer | Omitted | Maximum total tokens the scrape and its retries can use, as a positive integer. Omit this parameter for no limit. |
 | `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |
-| `save_result` | `saveResult` | boolean | `false` | Whether to save the result to the dashboard Result tab. |
-| `block_resources` | `blockResources` | boolean | `false` | Whether to block images, fonts, and stylesheets while loading the page. |
-| `wait_for_selector` | `waitForSelector` | string | Omitted | Wait for the page to contain the specified CSS selector before returning the result. |
-| `return_cookie` | `returnCookie` | boolean | `false` | Whether to include browser session cookies in the response. |
-| `warm_start` | `warmStart` | boolean | `false` | Whether to enable warm start for more reliable scraping, at the cost of additional latency. |
-| `screenshot` | `screenshot` | select: `full`, `top` | `"full"` | Screenshot area to capture: full for the entire page or top for the top viewport. |
-| `html` | `html` | boolean | `true` | Whether to include the page HTML in the response. |
-| `markdown` | `markdown` | boolean | `false` | Whether to include the page Markdown in the response. |
 
-Browser rendering is always enabled. `warm_start` is available for screenshots in this plugin in addition to the standard service reference.
+The plugin sends `screenshot=full` and `browserRendering=true`; the screenshot area and browser rendering are not inputs.
 
 Example input:
 
 ```json
 {
   "url": "https://example.com",
-  "screenshot": "top",
-  "html": false,
-  "markdown": true,
-  "warm_start": true
+  "wait_for_selector": "body",
+  "timeout": 120
 }
 ```
 
-The response body is JSON containing a base64 screenshot and the requested page outputs. The API can still include HTML when HTML output is disabled.
+The response body is JSON containing a base64 PNG screenshot of the full page and the page HTML.
 
 ```json
 {
   "html": "<html>...</html>",
-  "screenshot": "BASE64_PNG_DATA",
-  "markdown": "# Example page\n\n..."
+  "screenshot": "BASE64_PNG_DATA"
 }
 ```
 
@@ -248,17 +239,18 @@ Extract structured JSON from a page using a natural-language prompt. Append Json
 | Parameter | HTTP field | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `url` | `url` | string | Required | Absolute HTTP or HTTPS URL of the page to process. |
-| `timeout` | `timeout` | integer | `300` | Page load timeout in seconds, from 1 to 300. The HTTP request allows 30 additional seconds. |
-| `geo_code` | `geoCode` | string | `"us"` | Two-letter country code to load the page from, sent in lowercase. |
-| `proxy_country` | `proxyCountry` | string | `"us"` | Two-letter country code of the proxy server, sent in lowercase. |
-| `super` | `super` | boolean | `false` | Whether to route the request through real devices. |
-| `wait_until` | `waitUntil` | select: `domcontentloaded`, `load`, `networkidle0`, `networkidle2` | `"domcontentloaded"` | Navigation completion event to wait for: domcontentloaded, load, networkidle0, or networkidle2. |
-| `proxy` | `proxy` | string | Omitted | Custom proxy URL used to load the page. |
-| `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |
-| `save_result` | `saveResult` | boolean | `false` | Whether to save the result to the dashboard Result tab. |
 | `prompt` | `prompt` | string | `"Extract all data as complete as possible."` | Instructions describing the data to extract. Append Json Schema: and a JSON schema to shape the output. |
-| `browser_rendering` | `browserRendering` | boolean | `false` | Whether to render the page in a browser before returning the result. |
-| `html` | `html` | boolean | `false` | Whether to include the page HTML in the response. |
+| `html` | `html` | boolean | `true` | Whether to include the page HTML in the response. |
+| `browser_rendering` | `browserRendering` | select: `auto`, `true`, `false` | `auto` (omitted) | Whether to load the page in a browser: true always does and false never does. Omit it to load the page without a browser first and switch to a browser automatically if the request is blocked. |
+| `timeout` | `timeout` | integer | `300` | Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional seconds. |
+| `warm_start` | `warmStart` | boolean | `false` | Whether to open the site's home page first to warm the session before loading the target URL. |
+| `block_resources` | `blockResources` | boolean | `false` | Whether to block images, fonts, and stylesheets while loading the page. |
+| `wait_for_selector` | `waitForSelector` | string | Omitted | CSS selector or text to wait for on the page before returning the result, up to 500 characters. |
+| `geo_code` | `geoCode` | string | Omitted | Two-letter country code to load the page from, sent in lowercase. |
+| `save_result` | `saveResult` | boolean | `true` | Whether to save the result to the dashboard Result tab. |
+| `max_age` | `maxAge` | integer | `0` | Return a cached result of the same request when it is newer than the selected age. A cached result costs the same tokens as the original scrape. |
+| `token_cap` | `tokenCap` | integer | Omitted | Maximum total tokens the scrape and its retries can use, as a positive integer. Omit this parameter for no limit. |
+| `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |
 | `screenshot` | `screenshot` | boolean | `false` | Whether to include a base64 screenshot in the response. |
 
 The plugin sends `agent=general`. When the encoded `GET` URL would exceed 8,000 characters, the plugin sends `POST` instead, moving `url`, `prompt`, and `agent` to a JSON body.
@@ -269,11 +261,11 @@ Example input:
 {
   "url": "https://example.com",
   "prompt": "Extract the first 2 items with title and price. Json Schema: {\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"title\":{\"type\":\"string\"},\"price\":{\"type\":\"string\"}},\"required\":[\"title\",\"price\"]}}",
-  "browser_rendering": true
+  "browser_rendering": "true"
 }
 ```
 
-Extraction results are in the body's `data` field and follow the requested schema. Response metadata includes `thread_id`, `token_usage`, `status`, `error`, `runtime`, and `cookies`. `html`, `markdown`, and `screenshot` can be empty strings when not requested.
+Extraction results are in the body's `data` field and follow the requested schema. Response metadata includes `thread_id`, `token_usage`, `status`, `error`, `runtime`, and `cookies`. `html` contains the page HTML unless disabled; `markdown` and `screenshot` can be empty strings.
 
 ```json
 {
@@ -286,7 +278,7 @@ Extraction results are in the body's `data` field and follow the requested schem
   ],
   "thread_id": "THREAD_ID",
   "token_usage": 1,
-  "html": "",
+  "html": "<html>...</html>",
   "markdown": "",
   "screenshot": "",
   "status": "Results ready",
@@ -303,10 +295,10 @@ Search the web and return ranked results with titles, URLs, descriptions, and so
 | Parameter | HTTP field | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `query` | `query` | string | Required | Search query text, trimmed before sending, containing 1 to 1000 characters. |
-| `country` | `country` | string | `"us"` | Two-letter country code to search from, sent in lowercase. |
+| `country` | `country` | string | Omitted | Two-letter country code to search from, sent in lowercase. |
 | `num_results` | `numResults` | integer | `10` | Number of search results to request, as an integer from 10 to 100. Fewer results may be returned. |
 
-The plugin sends `action=websearch`. The HTTP deadline is fixed at 120 seconds.
+The plugin sends `action=websearch`. `country` is omitted unless set, so the API searches from the United States. The HTTP deadline is fixed at 120 seconds.
 
 Example input:
 
@@ -347,6 +339,15 @@ Page tools (HTML, Markdown, screenshot, and JSON) allow `timeout` plus 30 second
 
 ## Upgrading
 
+### From 0.3.0 to 0.4.0
+
+Version 0.4.0 matches the Scraper API reference. Tool IDs are unchanged; review the inputs of existing Agent and Workflow tool nodes:
+
+- Removed inputs: `super`, `wait_until`, `proxy_country`, `proxy`, and `return_cookie` on the page tools, `html` on Scrape Markdown, and `screenshot`, `html`, `markdown`, and `warm_start` on Get screenshot. Get screenshot always captures the full page.
+- New inputs: `max_age` and `token_cap` on the page tools, `action` on Scrape HTML and Scrape Markdown, and `screenshot` on Scrape HTML (`false`, `full`, `top`, or a custom viewport). Scrape JSON now accepts `warm_start`, `block_resources`, and `wait_for_selector`.
+- `browser_rendering` is a select: `auto` (the default) leaves rendering to the API, `true` always renders, and `false` never does.
+- Changed defaults: `save_result` is `true`, Scrape JSON's `html` is `true`, `timeout` accepts up to 330 seconds, and `geo_code` and Web search's `country` are omitted unless set, so the API uses the United States.
+
 ### From 0.2.0 to 0.3.0
 
 Version 0.3.0 replaces the Account and Scraper API tools with the seven standard services. Recreate affected Agent and Workflow tool nodes and reconnect their inputs and outputs:
@@ -367,4 +368,4 @@ Version 0.2.0 changed Web Search to `query`, `country`, and `num_results`. Versi
 
 Review [PRIVACY.md](PRIVACY.md) for the data sent to MrScraper, including URLs, queries, prompts, and proxy settings. Use content you are authorized to access and process.
 
-For plugin development, see the [source](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-0.3.0-source/mrscraper) and [GUIDE.md](https://github.com/ai-mrscraper/dify-plugins/blob/feat/mrscraper-0.3.0-source/mrscraper/GUIDE.md). Contact `support@mrscraper.com` for support.
+For plugin development, see the [source](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-0.4.0-source/mrscraper) and [GUIDE.md](https://github.com/ai-mrscraper/dify-plugins/blob/feat/mrscraper-0.4.0-source/mrscraper/GUIDE.md). Contact `support@mrscraper.com` for support.

@@ -19,29 +19,29 @@ Keep runtime dependencies synchronized between `pyproject.toml` and `requirement
 The contract mirrors the MrScraper Python SDK and CLI. Every request sends `Authorization: Bearer <token>`, `x-api-token: <token>`, `accept: application/json`, and `Content-Type: application/json`. The token is never placed in a URL. Booleans are serialized as `true`/`false`.
 
 - **Status:** `GET https://api.app.mrscraper.com/api/v1/subscription-accounts`, 600-second deadline. Return the body unchanged.
-- **Page services:** `GET https://api.mrscraper.com` with every option in the query string and a deadline of `timeout + 30` seconds. Always send `url`, `super`, `waitUntil`, `timeout`, `geoCode`, `proxyCountry`, and `saveResult`; send `proxy` and `maxRetries` only when set.
-  - **Scrape HTML:** adds `blockResources`, `returnCookie`, optional `waitForSelector`, `browserRendering`, `warmStart`, `html=true`, `markdown=false`, and `screenshot=false`.
-  - **Scrape Markdown:** as HTML, with `html` from the input, `markdown=true`, and `browserRendering=true` whenever `html` is true (the API fails for HTML plus Markdown without rendering).
-  - **Get screenshot:** loading controls, `browserRendering=true`, `warmStart`, `screenshot=full|top`, `html` (default `true`), and `markdown`.
-  - **Scrape JSON:** page controls only, plus `browserRendering`, `html`, boolean `screenshot`, `agent=general`, and `prompt`. Above an 8,000-character encoded URL, switch to `POST` and move `url`, `prompt`, and `agent` to the JSON body.
+- **Page services:** `GET https://api.mrscraper.com` with every field in the query string, in the documented order, and a deadline of `timeout + 30` seconds. Send only the parameters the Scraper API reference lists. Always send `url`, `timeout` (1–330, default 300), `saveResult` (default `true`), and `maxAge` (0–604800000, default 0); send `waitForSelector` (up to 500 characters), `geoCode`, `tokenCap` (at least 1), and `maxRetries` (at least 0) only when set.
+  - **Scrape HTML:** `html=true`, optional `browserRendering` (omitted for `auto`), `warmStart`, `blockResources`, optional `action`, and `screenshot` (`false`, `full`, `top`, or `WIDTHxHEIGHT` with an optional `-ZOOM`; default `false`).
+  - **Scrape Markdown:** `markdown=true`, optional `browserRendering`, `warmStart`, `blockResources`, and optional `action`.
+  - **Get screenshot:** `screenshot=full` and `browserRendering=true`, plus the shared page controls only.
+  - **Scrape JSON:** `prompt`, `agent=general`, `html` (default `true`), optional `browserRendering`, `warmStart`, `blockResources`, and a boolean `screenshot`. Above an 8,000-character encoded URL, switch to `POST` and move `url`, `prompt`, and `agent` to the JSON body.
 - **Scrape brand:** `GET https://api.mrscraper.com?action=brand-scraping&url=...&bundle=none`, 120-second deadline.
-- **Web search:** `GET https://api.mrscraper.com?action=websearch&query=...&country=..&numResults=..`, 120-second deadline. `numResults` is an integer from 10 to 100.
+- **Web search:** `GET https://api.mrscraper.com?action=websearch&query=...&numResults=..`, 120-second deadline. `country` is sent only when set; `numResults` is an integer from 10 to 100.
 - A `401` response means the token is invalid.
 
 ## Adapter contract
 
 - `provider/mrscraper.yaml` registers exactly the seven `mrscraper_*` tools, in the standard service order.
 - The provider owns the `api_token` credential and validates it through Status. Credentials are never tool parameters.
-- Tool YAML files define the Dify interface. Tool and parameter descriptions are copied verbatim from the MrScraper standard service reference; only names follow Dify's snake_case convention. Get screenshot additionally accepts `warm_start`.
-- `common/parameters.py` validates and normalizes every input before an HTTP request. Empty optional inputs take the standard defaults. `common/client.py` serializes the normalized values.
+- Tool YAML files define the Dify interface. Tool and parameter descriptions are copied verbatim from the MrScraper standard service reference; only names follow Dify's snake_case convention. `browser_rendering` is a select (`auto`, `true`, `false`) because Dify booleans cannot be left unset.
+- `common/parameters.py` validates and normalizes every input before an HTTP request. Empty optional inputs take the standard defaults or stay omitted. `common/client.py` serializes the normalized values.
 - Emit objects and arrays as Dify JSON messages, strings unchanged as text, binary data as blobs, and scalar values as text. HTTP status and response headers are omitted from tool content.
-- Convert HTTP, network, and parameter errors into useful Dify errors without exposing the provider token or configured proxy.
+- Convert HTTP, network, and parameter errors into useful Dify errors without exposing the provider token.
 
 ## Verification
 
 Automated tests replace `MrscraperClient.transport` with an in-memory `httpx.MockTransport`. Tests should establish that the seven registered schemas load and match the standard descriptions, inputs reach the correct endpoint with the correct method, query, and body, credentials stay at provider level, error messages do not expose secrets, and JSON/text outputs retain their native shape.
 
-Run live checks only when explicitly requested, with a token supplied through the environment or Dify credentials. Never write tokens to files.
+Run live checks only when explicitly requested, with a token supplied through the environment or Dify credentials. Never write tokens to files. Save live results under `test-results/`, which is ignored by Git and excluded from the package.
 
 For a Dify development connection, copy `.env.example` to `.env`, configure the deployment's debug connection, then run:
 
@@ -57,4 +57,4 @@ Keep the plugin version consistent across `pyproject.toml` and `manifest.yaml`. 
 
 Before packaging, run tests and lint, check dependencies and the lockfile, and review README and PRIVACY against the final code. Packaging and publication are separate release actions; this guide does not perform them.
 
-[Plugin source](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-0.3.0-source/mrscraper)
+[Plugin source](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-0.4.0-source/mrscraper)

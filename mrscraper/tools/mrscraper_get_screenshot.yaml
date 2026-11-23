@@ -5,8 +5,8 @@ identity:
     en_US: Get screenshot
 description:
   human:
-    en_US: Capture a base64 screenshot of the full page or top viewport. Browser rendering is always enabled.
-  llm: Capture a base64 screenshot of the full page or top viewport. Browser rendering is always enabled.
+    en_US: Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled.
+  llm: Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled.
 parameters:
 - name: url
   type: string
@@ -23,14 +23,25 @@ parameters:
   label:
     en_US: Timeout
   human_description:
-    en_US: Page load timeout in seconds, from 1 to 300. The HTTP request allows 30 additional seconds.
-  llm_description: Page load timeout in seconds, from 1 to 300. The HTTP request allows 30 additional
+    en_US: Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional
+      seconds.
+  llm_description: Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional
     seconds.
   form: llm
   default: 300
   min: 1
-  max: 300
+  max: 330
   precision: 0
+- name: wait_for_selector
+  type: string
+  required: false
+  label:
+    en_US: Wait For Selector
+  human_description:
+    en_US: CSS selector or text to wait for on the page before returning the result, up to 500 characters.
+  llm_description: CSS selector or text to wait for on the page before returning the result, up to 500
+    characters.
+  form: llm
 - name: geo_code
   type: string
   required: false
@@ -40,60 +51,44 @@ parameters:
     en_US: Two-letter country code to load the page from, sent in lowercase.
   llm_description: Two-letter country code to load the page from, sent in lowercase.
   form: llm
-  default: us
-- name: proxy_country
-  type: string
-  required: false
-  label:
-    en_US: Proxy Country
-  human_description:
-    en_US: Two-letter country code of the proxy server, sent in lowercase.
-  llm_description: Two-letter country code of the proxy server, sent in lowercase.
-  form: llm
-  default: us
-- name: super
+- name: save_result
   type: boolean
   required: false
   label:
-    en_US: Super
+    en_US: Save Result
   human_description:
-    en_US: Whether to route the request through real devices.
-  llm_description: Whether to route the request through real devices.
+    en_US: Whether to save the result to the dashboard Result tab.
+  llm_description: Whether to save the result to the dashboard Result tab.
   form: llm
-  default: false
-- name: wait_until
-  type: select
+  default: true
+- name: max_age
+  type: number
   required: false
   label:
-    en_US: Wait Until
+    en_US: Max Age
   human_description:
-    en_US: 'Navigation completion event to wait for: domcontentloaded, load, networkidle0, or networkidle2.'
-  llm_description: 'Navigation completion event to wait for: domcontentloaded, load, networkidle0, or
-    networkidle2.'
+    en_US: Return a cached result of the same request when it is newer than the selected age. A cached
+      result costs the same tokens as the original scrape.
+  llm_description: Return a cached result of the same request when it is newer than the selected age.
+    A cached result costs the same tokens as the original scrape.
   form: llm
-  default: domcontentloaded
-  options:
-  - value: domcontentloaded
-    label:
-      en_US: DOM content loaded
-  - value: load
-    label:
-      en_US: Load
-  - value: networkidle0
-    label:
-      en_US: Network idle 0
-  - value: networkidle2
-    label:
-      en_US: Network idle 2
-- name: proxy
-  type: string
+  default: 0
+  min: 0
+  max: 604800000
+  precision: 0
+- name: token_cap
+  type: number
   required: false
   label:
-    en_US: Proxy
+    en_US: Token Cap
   human_description:
-    en_US: Custom proxy URL used to load the page.
-  llm_description: Custom proxy URL used to load the page.
+    en_US: Maximum total tokens the scrape and its retries can use, as a positive integer. Omit this parameter
+      for no limit.
+  llm_description: Maximum total tokens the scrape and its retries can use, as a positive integer. Omit
+    this parameter for no limit.
   form: llm
+  min: 1
+  precision: 0
 - name: max_retries
   type: number
   required: false
@@ -105,93 +100,6 @@ parameters:
   form: llm
   min: 0
   precision: 0
-- name: save_result
-  type: boolean
-  required: false
-  label:
-    en_US: Save Result
-  human_description:
-    en_US: Whether to save the result to the dashboard Result tab.
-  llm_description: Whether to save the result to the dashboard Result tab.
-  form: llm
-  default: false
-- name: block_resources
-  type: boolean
-  required: false
-  label:
-    en_US: Block Resources
-  human_description:
-    en_US: Whether to block images, fonts, and stylesheets while loading the page.
-  llm_description: Whether to block images, fonts, and stylesheets while loading the page.
-  form: llm
-  default: false
-- name: wait_for_selector
-  type: string
-  required: false
-  label:
-    en_US: Wait For Selector
-  human_description:
-    en_US: Wait for the page to contain the specified CSS selector before returning the result.
-  llm_description: Wait for the page to contain the specified CSS selector before returning the result.
-  form: llm
-- name: return_cookie
-  type: boolean
-  required: false
-  label:
-    en_US: Return Cookie
-  human_description:
-    en_US: Whether to include browser session cookies in the response.
-  llm_description: Whether to include browser session cookies in the response.
-  form: llm
-  default: false
-- name: warm_start
-  type: boolean
-  required: false
-  label:
-    en_US: Warm Start
-  human_description:
-    en_US: Whether to enable warm start for more reliable scraping, at the cost of additional latency.
-  llm_description: Whether to enable warm start for more reliable scraping, at the cost of additional
-    latency.
-  form: llm
-  default: false
-- name: screenshot
-  type: select
-  required: false
-  label:
-    en_US: Screenshot
-  human_description:
-    en_US: 'Screenshot area to capture: full for the entire page or top for the top viewport.'
-  llm_description: 'Screenshot area to capture: full for the entire page or top for the top viewport.'
-  form: llm
-  default: full
-  options:
-  - value: full
-    label:
-      en_US: Full page
-  - value: top
-    label:
-      en_US: Top viewport
-- name: html
-  type: boolean
-  required: false
-  label:
-    en_US: HTML
-  human_description:
-    en_US: Whether to include the page HTML in the response.
-  llm_description: Whether to include the page HTML in the response.
-  form: llm
-  default: true
-- name: markdown
-  type: boolean
-  required: false
-  label:
-    en_US: Markdown
-  human_description:
-    en_US: Whether to include the page Markdown in the response.
-  llm_description: Whether to include the page Markdown in the response.
-  form: llm
-  default: false
 extra:
   python:
     source: tools/mrscraper_get_screenshot.py

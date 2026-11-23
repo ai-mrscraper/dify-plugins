@@ -183,3 +183,6 @@ GUIDE.md
 .env.example
 .coverage
 coverage.xml
+
+# Live API test results
+test-results/

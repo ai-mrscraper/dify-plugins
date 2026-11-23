@@ -34,16 +34,18 @@ TOOLS = {
     "scrape_json": MrscraperScrapeJsonTool,
     "web_search": MrscraperWebSearchTool,
 }
-PAGE_DEFAULT_QUERY = {
-    "url": URL,
-    "super": "false",
-    "waitUntil": "domcontentloaded",
-    "timeout": "300",
-    "geoCode": "us",
-    "proxyCountry": "us",
-    "saveResult": "false",
+SHARED_DEFAULT_QUERY = {"timeout": "300", "saveResult": "true", "maxAge": "0"}
+LOADING_DEFAULT_QUERY = {"warmStart": "false", "blockResources": "false"}
+# Options from earlier releases that the Scraper API reference no longer lists.
+REMOVED = {
+    "super": True,
+    "wait_until": "load",
+    "proxy_country": "sg",
+    "proxy": "http://proxy.example.com:8080",
+    "return_cookie": True,
+    "markdown": True,
 }
-LOADING_DEFAULT_QUERY = PAGE_DEFAULT_QUERY | {"blockResources": "false", "returnCookie": "false"}
+REMOVED_WIRE = {"super", "waitUntil", "proxyCountry", "proxy", "returnCookie", "markdown"}
 
 
 @pytest.fixture
@@ -135,78 +137,112 @@ def test_scrape_html_defaults_send_the_full_get_query_and_emit_text(transport) -
     assert request.method == "GET"
     assert request.content == b""
     assert str(request.url.copy_with(query=None)) == "https://api.mrscraper.com"
-    assert _query(request) == LOADING_DEFAULT_QUERY | {
-        "browserRendering": "false",
-        "warmStart": "false",
+    query = _query(request)
+    assert query == {
+        "url": URL,
         "html": "true",
-        "markdown": "false",
+        **SHARED_DEFAULT_QUERY,
+        **LOADING_DEFAULT_QUERY,
         "screenshot": "false",
     }
+    assert list(query) == [
+        "url",
+        "html",
+        "timeout",
+        "warmStart",
+        "blockResources",
+        "saveResult",
+        "maxAge",
+        "screenshot",
+    ]
     _assert_authenticated(request, 330)
 
 
-def test_scrape_html_sends_every_page_and_loading_control(transport) -> None:
+def test_scrape_html_sends_every_documented_control_in_order(transport) -> None:
     _, requests = transport
 
     _invoke(
         "scrape_html",
         {
             "url": URL,
+            "browser_rendering": "false",
             "timeout": 120.0,
-            "geo_code": "ID",
-            "proxy_country": "Sg",
-            "super": True,
-            "wait_until": "networkidle2",
-            "proxy": "http://proxy.example.com:8080",
-            "max_retries": 0,
-            "save_result": True,
+            "warm_start": True,
             "block_resources": True,
             "wait_for_selector": " body ",
-            "return_cookie": True,
-            "browser_rendering": True,
-            "warm_start": True,
+            "action": " product-flow ",
+            "geo_code": "ID",
+            "save_result": False,
+            "max_age": 3600000,
+            "token_cap": 50,
+            "max_retries": 0,
+            "screenshot": "1920x1080-75",
+            **REMOVED,
         },
     )
 
     request = requests[0]
-    assert _query(request) == {
-        "url": URL,
-        "super": "true",
-        "waitUntil": "networkidle2",
-        "timeout": "120",
-        "geoCode": "id",
-        "proxyCountry": "sg",
-        "saveResult": "true",
-        "proxy": "http://proxy.example.com:8080",
-        "maxRetries": "0",
-        "waitForSelector": "body",
-        "blockResources": "true",
-        "returnCookie": "true",
-        "browserRendering": "true",
-        "warmStart": "true",
-        "html": "true",
-        "markdown": "false",
-        "screenshot": "false",
-    }
+    query = _query(request)
+    assert list(query.items()) == [
+        ("url", URL),
+        ("html", "true"),
+        ("browserRendering", "false"),
+        ("timeout", "120"),
+        ("warmStart", "true"),
+        ("blockResources", "true"),
+        ("waitForSelector", "body"),
+        ("action", "product-flow"),
+        ("geoCode", "id"),
+        ("saveResult", "false"),
+        ("maxAge", "3600000"),
+        ("tokenCap", "50"),
+        ("maxRetries", "0"),
+        ("screenshot", "1920x1080-75"),
+    ]
     _assert_authenticated(request, 150)
 
 
-def test_scrape_markdown_with_html_enables_rendering_and_returns_json(transport) -> None:
-    configure, requests = transport
-    body = {"html": "<html>...</html>", "markdown": "# Example page"}
-    configure(lambda request: httpx.Response(200, json=body))
+@pytest.mark.parametrize(
+    ("value", "sent"),
+    [
+        (None, None),
+        ("", None),
+        ("auto", None),
+        ("true", "true"),
+        ("false", "false"),
+        (True, "true"),
+        (False, "false"),
+    ],
+)
+@pytest.mark.parametrize("operation", ["scrape_html", "scrape_markdown", "scrape_json"])
+def test_browser_rendering_is_omitted_unless_set(transport, operation, value, sent) -> None:
+    _, requests = transport
 
-    messages = _invoke("scrape_markdown", {"url": URL, "html": True, "warm_start": True})
+    _invoke(operation, {"url": URL, "browser_rendering": value})
 
-    assert messages[0].type.value == "json"
-    assert messages[0].message.json_object == body
-    assert _query(requests[0]) == LOADING_DEFAULT_QUERY | {
-        "browserRendering": "true",
-        "warmStart": "true",
-        "html": "true",
-        "markdown": "true",
-        "screenshot": "false",
-    }
+    assert _query(requests[0]).get("browserRendering") == sent
+
+
+@pytest.mark.parametrize(
+    ("value", "sent"),
+    [
+        (None, "false"),
+        ("", "false"),
+        ("false", "false"),
+        (False, "false"),
+        ("full", "full"),
+        ("top", "top"),
+        ("100x100", "100x100"),
+        ("3840x3840-300", "3840x3840-300"),
+        ("1280x800-25", "1280x800-25"),
+    ],
+)
+def test_scrape_html_screenshot_accepts_documented_captures(transport, value, sent) -> None:
+    _, requests = transport
+
+    _invoke("scrape_html", {"url": URL, "screenshot": value})
+
+    assert _query(requests[0])["screenshot"] == sent
 
 
 def test_scrape_markdown_defaults_return_markdown_text(transport) -> None:
@@ -217,19 +253,50 @@ def test_scrape_markdown_defaults_return_markdown_text(transport) -> None:
         )
     )
 
-    messages = _invoke("scrape_markdown", {"url": URL})
+    messages = _invoke("scrape_markdown", {"url": URL, "html": True, "screenshot": "top"})
 
     assert messages[0].message.text == "# Example page"
-    query = _query(requests[0])
-    assert (query["browserRendering"], query["html"], query["markdown"]) == (
-        "false",
-        "false",
-        "true",
+    request = requests[0]
+    assert _query(request) == {
+        "url": URL,
+        "markdown": "true",
+        **SHARED_DEFAULT_QUERY,
+        **LOADING_DEFAULT_QUERY,
+    }
+    _assert_authenticated(request, 330)
+
+
+def test_scrape_markdown_sends_rendering_action_and_cache_controls(transport) -> None:
+    _, requests = transport
+
+    _invoke(
+        "scrape_markdown",
+        {
+            "url": URL,
+            "browser_rendering": "true",
+            "action": "docs",
+            "max_age": 86400000,
+            "token_cap": 5,
+            "geo_code": "gb",
+        },
     )
-    assert query["warmStart"] == "false"
+
+    assert list(_query(requests[0]).items()) == [
+        ("url", URL),
+        ("markdown", "true"),
+        ("browserRendering", "true"),
+        ("timeout", "300"),
+        ("warmStart", "false"),
+        ("blockResources", "false"),
+        ("action", "docs"),
+        ("geoCode", "gb"),
+        ("saveResult", "true"),
+        ("maxAge", "86400000"),
+        ("tokenCap", "5"),
+    ]
 
 
-def test_get_screenshot_always_renders_and_defaults_to_full_page_with_html(transport) -> None:
+def test_get_screenshot_always_sends_a_full_page_rendered_capture(transport) -> None:
     configure, requests = transport
     body = {"html": "<html>...</html>", "screenshot": "BASE64_PNG_DATA"}
     configure(lambda request: httpx.Response(200, json=body))
@@ -239,32 +306,54 @@ def test_get_screenshot_always_renders_and_defaults_to_full_page_with_html(trans
     assert messages[0].message.json_object == body
     request = requests[0]
     assert request.method == "GET"
-    assert _query(request) == LOADING_DEFAULT_QUERY | {
-        "browserRendering": "true",
-        "warmStart": "false",
-        "screenshot": "full",
-        "html": "true",
-        "markdown": "false",
-    }
+    assert list(_query(request).items()) == [
+        ("url", URL),
+        ("screenshot", "full"),
+        ("browserRendering", "true"),
+        ("timeout", "300"),
+        ("saveResult", "true"),
+        ("maxAge", "0"),
+    ]
     _assert_authenticated(request, 330)
 
 
-def test_get_screenshot_accepts_warm_start_top_viewport_and_markdown(transport) -> None:
+def test_get_screenshot_sends_its_documented_controls_only(transport) -> None:
     _, requests = transport
 
     _invoke(
         "get_screenshot",
-        {"url": URL, "warm_start": True, "screenshot": "top", "html": False, "markdown": True},
+        {
+            "url": URL,
+            "timeout": 120,
+            "wait_for_selector": "#results",
+            "geo_code": "DE",
+            "save_result": False,
+            "max_age": 0,
+            "token_cap": 10,
+            "max_retries": 1,
+            # Not Get screenshot inputs: the area and rendering are fixed.
+            "screenshot": "top",
+            "browser_rendering": "false",
+            "warm_start": True,
+            "block_resources": True,
+            "html": False,
+            "action": "flow",
+            **REMOVED,
+        },
     )
 
-    query = _query(requests[0])
-    assert query["warmStart"] == "true"
-    assert query["screenshot"] == "top"
-    assert (query["html"], query["markdown"], query["browserRendering"]) == (
-        "false",
-        "true",
-        "true",
-    )
+    assert list(_query(requests[0]).items()) == [
+        ("url", URL),
+        ("screenshot", "full"),
+        ("browserRendering", "true"),
+        ("timeout", "120"),
+        ("waitForSelector", "#results"),
+        ("geoCode", "de"),
+        ("saveResult", "false"),
+        ("maxAge", "0"),
+        ("tokenCap", "10"),
+        ("maxRetries", "1"),
+    ]
 
 
 def test_scrape_brand_requests_the_brand_action_only(transport) -> None:
@@ -272,7 +361,9 @@ def test_scrape_brand_requests_the_brand_action_only(transport) -> None:
     body = {"data": {"status": "succeeded", "brand": {"name": "Example brand"}}}
     configure(lambda request: httpx.Response(200, json=body))
 
-    messages = _invoke("scrape_brand", {"url": URL, "timeout": 5, "warm_start": True})
+    messages = _invoke(
+        "scrape_brand", {"url": URL, "timeout": 5, "warm_start": True, "max_age": 3600000}
+    )
 
     assert messages[0].message.json_object == body
     request = requests[0]
@@ -281,9 +372,14 @@ def test_scrape_brand_requests_the_brand_action_only(transport) -> None:
     _assert_authenticated(request, 120)
 
 
-def test_scrape_json_defaults_use_the_general_agent_and_default_prompt(transport) -> None:
+def test_scrape_json_defaults_use_the_general_agent_and_include_html(transport) -> None:
     configure, requests = transport
-    body = {"success": True, "data": [{"title": "Example item"}], "html": "", "screenshot": ""}
+    body = {
+        "success": True,
+        "data": [{"title": "Example item"}],
+        "html": "<html>",
+        "screenshot": "",
+    }
     configure(lambda request: httpx.Response(200, json=body))
 
     messages = _invoke("scrape_json", {"url": URL, "prompt": None})
@@ -292,17 +388,22 @@ def test_scrape_json_defaults_use_the_general_agent_and_default_prompt(transport
     request = requests[0]
     assert request.method == "GET"
     assert request.content == b""
-    assert _query(request) == PAGE_DEFAULT_QUERY | {
-        "browserRendering": "false",
-        "html": "false",
-        "screenshot": "false",
-        "agent": "general",
-        "prompt": "Extract all data as complete as possible.",
-    }
+    assert list(_query(request).items()) == [
+        ("url", URL),
+        ("prompt", "Extract all data as complete as possible."),
+        ("agent", "general"),
+        ("html", "true"),
+        ("timeout", "300"),
+        ("warmStart", "false"),
+        ("blockResources", "false"),
+        ("saveResult", "true"),
+        ("maxAge", "0"),
+        ("screenshot", "false"),
+    ]
     _assert_authenticated(request, 330)
 
 
-def test_scrape_json_ignores_loading_controls_and_sends_boolean_screenshot(transport) -> None:
+def test_scrape_json_sends_loading_controls_and_boolean_screenshot(transport) -> None:
     _, requests = transport
 
     _invoke(
@@ -310,23 +411,38 @@ def test_scrape_json_ignores_loading_controls_and_sends_boolean_screenshot(trans
         {
             "url": URL,
             "prompt": 'Extract the title. Json Schema: {"type":"object"}',
-            "browser_rendering": True,
-            "html": True,
-            "screenshot": True,
-            "max_retries": 2,
+            "html": False,
+            "browser_rendering": "true",
+            "warm_start": True,
             "block_resources": True,
             "wait_for_selector": "body",
-            "return_cookie": True,
-            "warm_start": True,
+            "geo_code": "SG",
+            "max_age": 60000,
+            "token_cap": 20,
+            "max_retries": 2,
+            "screenshot": True,
+            "action": "ignored",
+            **REMOVED,
         },
     )
 
-    query = _query(requests[0])
-    assert query["prompt"] == 'Extract the title. Json Schema: {"type":"object"}'
-    assert (query["browserRendering"], query["html"], query["screenshot"]) == ("true",) * 3
-    assert query["maxRetries"] == "2"
-    for name in ("blockResources", "waitForSelector", "returnCookie", "warmStart", "markdown"):
-        assert name not in query
+    assert list(_query(requests[0]).items()) == [
+        ("url", URL),
+        ("prompt", 'Extract the title. Json Schema: {"type":"object"}'),
+        ("agent", "general"),
+        ("html", "false"),
+        ("browserRendering", "true"),
+        ("timeout", "300"),
+        ("warmStart", "true"),
+        ("blockResources", "true"),
+        ("waitForSelector", "body"),
+        ("geoCode", "sg"),
+        ("saveResult", "true"),
+        ("maxAge", "60000"),
+        ("tokenCap", "20"),
+        ("maxRetries", "2"),
+        ("screenshot", "true"),
+    ]
 
 
 def test_scrape_json_switches_to_post_above_eight_thousand_characters(transport) -> None:
@@ -342,6 +458,7 @@ def test_scrape_json_switches_to_post_above_eight_thousand_characters(transport)
     for name in ("url", "prompt", "agent"):
         assert name not in query
     assert query["timeout"] == "60"
+    assert query["html"] == "true"
     assert query["screenshot"] == "false"
     assert len(str(request.url)) <= 8000
     _assert_authenticated(request, 90)
@@ -388,16 +505,16 @@ def test_web_search_sends_a_get_websearch_action(transport) -> None:
     assert request.method == "GET"
     assert request.content == b""
     assert str(request.url.copy_with(query=None)) == "https://api.mrscraper.com"
-    assert _query(request) == {
-        "action": "websearch",
-        "query": "site:example.com documentation",
-        "country": "id",
-        "numResults": "20",
-    }
+    assert list(_query(request).items()) == [
+        ("action", "websearch"),
+        ("query", "site:example.com documentation"),
+        ("country", "id"),
+        ("numResults", "20"),
+    ]
     _assert_authenticated(request, 120)
 
 
-def test_web_search_defaults_to_us_and_ten_results(transport) -> None:
+def test_web_search_omits_country_unless_set_and_defaults_to_ten_results(transport) -> None:
     _, requests = transport
 
     _invoke("web_search", {"query": "example domain", "country": " ", "num_results": None})
@@ -405,9 +522,22 @@ def test_web_search_defaults_to_us_and_ten_results(transport) -> None:
     assert _query(requests[0]) == {
         "action": "websearch",
         "query": "example domain",
-        "country": "us",
         "numResults": "10",
     }
+
+
+@pytest.mark.parametrize("operation", ["scrape_html", "scrape_markdown", "scrape_json"])
+def test_removed_options_never_reach_the_wire(transport, operation: str) -> None:
+    _, requests = transport
+
+    _invoke(operation, {"url": URL, **REMOVED})
+
+    query = _query(requests[0])
+    # markdown=true is Scrape Markdown's fixed field; it is never an input.
+    fixed = {"markdown"} if operation == "scrape_markdown" else set()
+    assert (REMOVED_WIRE - fixed).isdisjoint(query)
+    if fixed:
+        assert query["markdown"] == "true"
 
 
 def _sample_value(parameter: dict) -> Any:
@@ -417,13 +547,19 @@ def _sample_value(parameter: dict) -> Any:
     if parameter["type"] == "select":
         return parameter["options"][-1]["value"]
     if parameter["type"] == "number":
-        return {"timeout": 45, "max_retries": 4, "num_results": 30}[name]
+        return {
+            "timeout": 45,
+            "max_age": 3600000,
+            "token_cap": 7,
+            "max_retries": 4,
+            "num_results": 30,
+        }[name]
     return {
         "url": "https://example.com/changed",
-        "geo_code": "de",
-        "proxy_country": "fr",
-        "proxy": "http://proxy.example.com:3128",
         "wait_for_selector": "main",
+        "action": "flow",
+        "geo_code": "de",
+        "screenshot": "top",
         "prompt": "Extract the heading.",
         "query": "changed query",
         "country": "gb",
@@ -431,16 +567,15 @@ def _sample_value(parameter: dict) -> Any:
 
 
 WIRE_NAMES = {
-    "geo_code": "geoCode",
-    "proxy_country": "proxyCountry",
-    "wait_until": "waitUntil",
-    "max_retries": "maxRetries",
-    "save_result": "saveResult",
-    "block_resources": "blockResources",
-    "wait_for_selector": "waitForSelector",
-    "return_cookie": "returnCookie",
     "browser_rendering": "browserRendering",
     "warm_start": "warmStart",
+    "block_resources": "blockResources",
+    "wait_for_selector": "waitForSelector",
+    "geo_code": "geoCode",
+    "save_result": "saveResult",
+    "max_age": "maxAge",
+    "token_cap": "tokenCap",
+    "max_retries": "maxRetries",
     "num_results": "numResults",
 }
 
@@ -456,8 +591,6 @@ def test_every_schema_parameter_reaches_the_wire(transport, operation: str) -> N
     query = _query(requests[0])
     for name, value in values.items():
         expected = str(value).lower() if isinstance(value, bool) else str(value)
-        if operation == "scrape_markdown" and name == "browser_rendering":
-            expected = "true"
         assert query[WIRE_NAMES.get(name, name)] == expected, name
 
 
@@ -485,9 +618,8 @@ def test_unknown_operations_are_rejected() -> None:
         MrscraperClient(TOKEN).invoke("account", {})
 
 
-def test_transport_errors_redact_the_token_and_proxy(transport) -> None:
+def test_transport_errors_redact_the_token(transport) -> None:
     configure, _ = transport
-    proxy = "http://placeholder-user:placeholder+secret@proxy.example.com:8080"
 
     def fail(request: httpx.Request) -> httpx.Response:
         raise httpx.ConnectError(
@@ -497,13 +629,12 @@ def test_transport_errors_redact_the_token_and_proxy(transport) -> None:
 
     configure(fail)
     with pytest.raises(MrscraperAPIError) as error:
-        _invoke("scrape_html", {"url": URL, "proxy": proxy})
+        _invoke("scrape_html", {"url": URL})
 
     message = str(error.value)
     assert "[REDACTED]" in message
-    for secret in (TOKEN, proxy):
-        for value in (secret, quote(secret, safe=""), quote_plus(secret)):
-            assert value not in message
+    for value in (TOKEN, quote(TOKEN, safe=""), quote_plus(TOKEN)):
+        assert value not in message
 
 
 @pytest.mark.parametrize("operation", list(TOOLS))
@@ -545,31 +676,35 @@ PAGE_INVALID = [
     {"url": "http://[::1"},
     {"url": " "},
     {"timeout": 0},
-    {"timeout": 301},
+    {"timeout": 331},
     {"timeout": 1.5},
     {"timeout": True},
     {"geo_code": "usa"},
-    {"proxy_country": "1a"},
-    {"super": "true"},
-    {"wait_until": "networkidle"},
+    {"geo_code": 1},
     {"max_retries": -1},
     {"max_retries": 1.5},
     {"save_result": 1},
-    {"proxy": 42},
+    {"save_result": "false"},
+    {"max_age": -1},
+    {"max_age": 604800001},
+    {"max_age": 1.5},
+    {"max_age": True},
+    {"token_cap": 0},
+    {"token_cap": 1.5},
+    {"wait_for_selector": "a" * 501},
+    {"wait_for_selector": 3},
+]
+LOADING_INVALID = [
+    {"browser_rendering": "maybe"},
+    {"browser_rendering": 1},
+    {"warm_start": "yes"},
+    {"block_resources": "false"},
 ]
 
 
-@pytest.mark.parametrize("operation", ["scrape_html", "scrape_markdown", "get_screenshot"])
-@pytest.mark.parametrize(
-    "options",
-    [
-        *PAGE_INVALID,
-        {"block_resources": "false"},
-        {"return_cookie": None, "wait_for_selector": 3},
-        {"warm_start": "yes"},
-    ],
-)
-def test_invalid_page_input_is_rejected_before_http(transport, operation, options) -> None:
+@pytest.mark.parametrize("operation", ["scrape_html", "scrape_markdown", "scrape_json"])
+@pytest.mark.parametrize("options", [*PAGE_INVALID, *LOADING_INVALID])
+def test_invalid_loading_input_is_rejected_before_http(transport, operation, options) -> None:
     _, requests = transport
 
     with pytest.raises(ParameterValidationError):
@@ -578,18 +713,32 @@ def test_invalid_page_input_is_rejected_before_http(transport, operation, option
     assert requests == []
 
 
+@pytest.mark.parametrize("options", PAGE_INVALID)
+def test_invalid_screenshot_input_is_rejected_before_http(transport, options) -> None:
+    _, requests = transport
+
+    with pytest.raises(ParameterValidationError):
+        _invoke("get_screenshot", {"url": URL} | options)
+
+    assert requests == []
+
+
 @pytest.mark.parametrize(
     ("operation", "options"),
     [
-        ("scrape_html", {"browser_rendering": "auto"}),
-        ("scrape_markdown", {"html": "true"}),
-        ("get_screenshot", {"screenshot": True}),
-        ("get_screenshot", {"screenshot": "viewport"}),
-        ("get_screenshot", {"markdown": "false"}),
+        ("scrape_html", {"screenshot": True}),
+        ("scrape_html", {"screenshot": "viewport"}),
+        ("scrape_html", {"screenshot": "FULL"}),
+        ("scrape_html", {"screenshot": "99x800"}),
+        ("scrape_html", {"screenshot": "1280x3841"}),
+        ("scrape_html", {"screenshot": "1280x800-24"}),
+        ("scrape_html", {"screenshot": "1280x800-301"}),
+        ("scrape_html", {"action": 3}),
+        ("scrape_markdown", {"action": ["flow"]}),
         ("scrape_json", {"screenshot": "full"}),
+        ("scrape_json", {"html": "true"}),
         ("scrape_json", {"prompt": "   "}),
         ("scrape_json", {"prompt": 1}),
-        *[("scrape_json", options) for options in PAGE_INVALID],
         ("scrape_brand", {"url": "ftp://example.com"}),
         ("scrape_brand", {"url": None}),
     ],

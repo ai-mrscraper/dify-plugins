@@ -13,10 +13,9 @@ SERVICE_DESCRIPTIONS = {
     "status": "Return the raw account status API response without summarizing, redacting body "
     "fields, or adding calculated fields.",
     "scrape_html": "Retrieve the raw HTML of a page. Browser rendering is optional.",
-    "scrape_markdown": "Retrieve a page as Markdown. Including HTML also enables browser rendering "
-    "and returns both outputs as JSON.",
-    "get_screenshot": "Capture a base64 screenshot of the full page or top viewport. Browser "
-    "rendering is always enabled.",
+    "scrape_markdown": "Retrieve a page as clean Markdown. Browser rendering is optional.",
+    "get_screenshot": "Capture a base64 PNG screenshot of the full page. Browser rendering is "
+    "always enabled.",
     "scrape_brand": "Extract a website's colors, typography, logos, and social links as JSON.",
     "scrape_json": "Extract structured JSON from a page using a natural-language prompt. Append "
     "Json Schema: and a JSON schema to shape the output.",
@@ -25,75 +24,64 @@ SERVICE_DESCRIPTIONS = {
 }
 PARAMETER_DESCRIPTIONS = {
     "url": "Absolute HTTP or HTTPS URL of the page to process.",
-    "timeout": "Page load timeout in seconds, from 1 to 300. The HTTP request allows 30 "
-    "additional seconds.",
-    "geo_code": "Two-letter country code to load the page from, sent in lowercase.",
-    "proxy_country": "Two-letter country code of the proxy server, sent in lowercase.",
-    "super": "Whether to route the request through real devices.",
-    "wait_until": "Navigation completion event to wait for: domcontentloaded, load, networkidle0, "
-    "or networkidle2.",
-    "proxy": "Custom proxy URL used to load the page.",
-    "max_retries": "Maximum number of retries, as a nonnegative integer. Omit this parameter for "
-    "no limit.",
-    "save_result": "Whether to save the result to the dashboard Result tab.",
-    "block_resources": "Whether to block images, fonts, and stylesheets while loading the page.",
-    "wait_for_selector": "Wait for the page to contain the specified CSS selector before "
-    "returning the result.",
-    "return_cookie": "Whether to include browser session cookies in the response.",
-    "browser_rendering": "Whether to render the page in a browser before returning the result.",
-    "warm_start": "Whether to enable warm start for more reliable scraping, at the cost of "
-    "additional latency.",
-    "html": "Whether to include the page HTML in the response.",
-    "markdown": "Whether to include the page Markdown in the response.",
     "prompt": "Instructions describing the data to extract. Append Json Schema: and a JSON schema "
     "to shape the output.",
+    "html": "Whether to include the page HTML in the response.",
+    "browser_rendering": "Whether to load the page in a browser: true always does and false never "
+    "does. Omit it to load the page without a browser first and switch to a browser automatically "
+    "if the request is blocked.",
+    "timeout": "Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 "
+    "additional seconds.",
+    "warm_start": "Whether to open the site's home page first to warm the session before loading "
+    "the target URL.",
+    "block_resources": "Whether to block images, fonts, and stylesheets while loading the page.",
+    "wait_for_selector": "CSS selector or text to wait for on the page before returning the "
+    "result, up to 500 characters.",
+    "action": "Scraper action that routes the request or simply flags it, useful for separating "
+    "analytics per domain.",
+    "geo_code": "Two-letter country code to load the page from, sent in lowercase.",
+    "save_result": "Whether to save the result to the dashboard Result tab.",
+    "max_age": "Return a cached result of the same request when it is newer than the selected "
+    "age. A cached result costs the same tokens as the original scrape.",
+    "token_cap": "Maximum total tokens the scrape and its retries can use, as a positive integer. "
+    "Omit this parameter for no limit.",
+    "max_retries": "Maximum number of retries, as a nonnegative integer. Omit this parameter for "
+    "no limit.",
     "query": "Search query text, trimmed before sending, containing 1 to 1000 characters.",
     "country": "Two-letter country code to search from, sent in lowercase.",
     "num_results": "Number of search results to request, as an integer from 10 to 100. Fewer "
     "results may be returned.",
 }
 SCREENSHOT_DESCRIPTIONS = {
-    "get_screenshot": "Screenshot area to capture: full for the entire page or top for the top "
-    "viewport.",
+    "scrape_html": "Screenshot to capture with the HTML: false for none, full for the entire page, "
+    "top for the first viewport, or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an "
+    "optional -ZOOM percent from 25 to 300, such as 1280x800 or 1920x1080-75. Any screenshot "
+    "forces browser rendering.",
     "scrape_json": "Whether to include a base64 screenshot in the response.",
 }
-PAGE = [
-    "url",
-    "timeout",
-    "geo_code",
-    "proxy_country",
-    "super",
-    "wait_until",
-    "proxy",
-    "max_retries",
-    "save_result",
-]
-LOADING = ["block_resources", "wait_for_selector", "return_cookie"]
+LOADING = ["browser_rendering", "timeout", "warm_start", "block_resources", "wait_for_selector"]
+CACHE = ["geo_code", "save_result", "max_age", "token_cap", "max_retries"]
 SERVICE_PARAMETERS = {
     "status": [],
-    "scrape_html": [*PAGE, *LOADING, "browser_rendering", "warm_start"],
-    "scrape_markdown": [*PAGE, *LOADING, "browser_rendering", "warm_start", "html"],
-    # Get screenshot adds warm_start to the standard reference.
-    "get_screenshot": [*PAGE, *LOADING, "warm_start", "screenshot", "html", "markdown"],
+    "scrape_html": ["url", *LOADING, "action", *CACHE, "screenshot"],
+    "scrape_markdown": ["url", *LOADING, "action", *CACHE],
+    "get_screenshot": ["url", "timeout", "wait_for_selector", *CACHE],
     "scrape_brand": ["url"],
-    "scrape_json": [*PAGE, "prompt", "browser_rendering", "html", "screenshot"],
+    "scrape_json": ["url", "prompt", "html", *LOADING, *CACHE, "screenshot"],
     "web_search": ["query", "country", "num_results"],
 }
+# Inputs without a default are omitted from the request unless set.
+OMITTED = {"url", "query", "wait_for_selector", "action", "geo_code", "token_cap", "max_retries"}
+OMITTED |= {"country"}
 DEFAULTS = {
-    "timeout": 300,
-    "geo_code": "us",
-    "proxy_country": "us",
-    "super": False,
-    "wait_until": "domcontentloaded",
-    "save_result": False,
-    "block_resources": False,
-    "return_cookie": False,
-    "browser_rendering": False,
-    "warm_start": False,
-    "html": False,
-    "markdown": False,
     "prompt": "Extract all data as complete as possible.",
-    "country": "us",
+    "html": True,
+    "browser_rendering": "auto",
+    "timeout": 300,
+    "warm_start": False,
+    "block_resources": False,
+    "save_result": True,
+    "max_age": 0,
     "num_results": 10,
 }
 CLASS_NAMES = {
@@ -152,44 +140,53 @@ def test_schema_defaults_and_types_follow_the_reference(operation: str) -> None:
     parameters = {parameter["name"]: parameter for parameter in _schema(operation)["parameters"]}
 
     for name, parameter in parameters.items():
-        if name in {"url", "query", "proxy", "max_retries", "wait_for_selector"}:
+        if name in OMITTED:
             assert "default" not in parameter, name
-        elif name == "screenshot" or (operation == "get_screenshot" and name == "html"):
+        elif name == "screenshot":
             continue
         else:
             assert parameter["default"] == DEFAULTS[name], name
         if isinstance(DEFAULTS.get(name), bool):
             assert parameter["type"] == "boolean"
-    if "wait_until" in parameters:
-        wait_until = parameters["wait_until"]
-        assert wait_until["type"] == "select"
-        assert [option["value"] for option in wait_until["options"]] == [
-            "domcontentloaded",
-            "load",
-            "networkidle0",
-            "networkidle2",
-        ]
-    for name, bounds in {"timeout": (1, 300), "num_results": (10, 100)}.items():
+    if "browser_rendering" in parameters:
+        rendering = parameters["browser_rendering"]
+        assert rendering["type"] == "select"
+        assert [option["value"] for option in rendering["options"]] == ["auto", "true", "false"]
+    bounds = {"timeout": (1, 330), "max_age": (0, 604800000), "num_results": (10, 100)}
+    for name, (minimum, maximum) in bounds.items():
         if name in parameters:
             parameter = parameters[name]
-            assert (parameter["type"], parameter["min"], parameter["max"]) == ("number", *bounds)
+            assert (parameter["type"], parameter["min"], parameter["max"]) == (
+                "number",
+                minimum,
+                maximum,
+            )
             assert parameter["precision"] == 0
-    if "max_retries" in parameters:
-        assert (parameters["max_retries"]["min"], parameters["max_retries"]["precision"]) == (0, 0)
-        assert "max" not in parameters["max_retries"]
+    for name, minimum in {"token_cap": 1, "max_retries": 0}.items():
+        if name in parameters:
+            assert (parameters[name]["min"], parameters[name]["precision"]) == (minimum, 0)
+            assert "max" not in parameters[name]
 
 
 def test_screenshot_parameter_forms_differ_by_service() -> None:
-    capture = {p["name"]: p for p in _schema("get_screenshot")["parameters"]}
+    capture = {p["name"]: p for p in _schema("scrape_html")["parameters"]}
     extraction = {p["name"]: p for p in _schema("scrape_json")["parameters"]}
+    screenshot = {p["name"] for p in _schema("get_screenshot")["parameters"]}
 
-    assert capture["screenshot"]["type"] == "select"
-    assert capture["screenshot"]["default"] == "full"
-    assert [option["value"] for option in capture["screenshot"]["options"]] == ["full", "top"]
-    assert capture["html"]["default"] is True
-    assert capture["warm_start"]["default"] is False
+    assert capture["screenshot"]["type"] == "string"
+    assert capture["screenshot"]["default"] == "false"
     assert extraction["screenshot"]["type"] == "boolean"
     assert extraction["screenshot"]["default"] is False
+    # Get screenshot always sends screenshot=full and browserRendering=true.
+    assert screenshot.isdisjoint({"screenshot", "browser_rendering", "html", "markdown"})
+
+
+def test_removed_options_are_not_offered() -> None:
+    removed = {"super", "wait_until", "proxy_country", "proxy", "return_cookie", "markdown"}
+    for operation in SERVICE_DESCRIPTIONS:
+        names = {parameter["name"] for parameter in _schema(operation)["parameters"]}
+        assert names.isdisjoint(removed), operation
+    assert "html" not in {p["name"] for p in _schema("scrape_markdown")["parameters"]}
 
 
 @pytest.mark.parametrize("operation", list(SERVICE_DESCRIPTIONS))
@@ -206,7 +203,7 @@ def test_manifest_and_project_versions_match_and_network_domains_are_minimal() -
     manifest = yaml.safe_load((ROOT / "manifest.yaml").read_text())
     pyproject = (ROOT / "pyproject.toml").read_text()
 
-    assert manifest["version"] == "0.3.0"
+    assert manifest["version"] == "0.4.0"
     assert f'version = "{manifest["version"]}"' in pyproject
     assert manifest["network"]["domains"] == ["api.app.mrscraper.com", "api.mrscraper.com"]
-    assert "feat/mrscraper-0.3.0-source" in manifest["repo"]
+    assert "feat/mrscraper-0.4.0-source" in manifest["repo"]
