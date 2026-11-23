@@ -55,8 +55,8 @@ PARAMETER_DESCRIPTIONS = {
 SCREENSHOT_DESCRIPTIONS = {
     "scrape_html": "Screenshot to capture with the HTML: false for none, full for the entire page, "
     "top for the first viewport, or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an "
-    "optional -ZOOM percent from 25 to 300, such as 1280x800 or 1920x1080-75. Any screenshot "
-    "forces browser rendering.",
+    "optional -ZOOM percent from 25 to 300, such as 1280x800 or 1920x1080-75. Setting a "
+    "screenshot also sends browserRendering=true.",
     "scrape_json": "Whether to include a base64 screenshot in the response.",
 }
 LOADING = ["browser_rendering", "timeout", "warm_start", "block_resources", "wait_for_selector"]

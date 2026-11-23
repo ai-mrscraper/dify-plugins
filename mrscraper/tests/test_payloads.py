@@ -165,6 +165,7 @@ def test_scrape_html_sends_every_documented_control_in_order(transport) -> None:
         "scrape_html",
         {
             "url": URL,
+            # A screenshot overrides this and sends browserRendering=true.
             "browser_rendering": "false",
             "timeout": 120.0,
             "warm_start": True,
@@ -186,7 +187,7 @@ def test_scrape_html_sends_every_documented_control_in_order(transport) -> None:
     assert list(query.items()) == [
         ("url", URL),
         ("html", "true"),
-        ("browserRendering", "false"),
+        ("browserRendering", "true"),
         ("timeout", "120"),
         ("warmStart", "true"),
         ("blockResources", "true"),
@@ -242,7 +243,57 @@ def test_scrape_html_screenshot_accepts_documented_captures(transport, value, se
 
     _invoke("scrape_html", {"url": URL, "screenshot": value})
 
-    assert _query(requests[0])["screenshot"] == sent
+    query = _query(requests[0])
+    assert query["screenshot"] == sent
+    # Any screenshot sends browserRendering=true; none leaves rendering omitted.
+    assert query.get("browserRendering") == (None if sent == "false" else "true")
+
+
+@pytest.mark.parametrize("rendering", [None, "", "auto", "true", "false", True, False])
+@pytest.mark.parametrize("capture", ["full", "top", "1280x800-75"])
+def test_scrape_html_screenshot_always_sends_browser_rendering(
+    transport, capture, rendering
+) -> None:
+    _, requests = transport
+
+    _invoke("scrape_html", {"url": URL, "screenshot": capture, "browser_rendering": rendering})
+
+    query = _query(requests[0])
+    assert query["browserRendering"] == "true"
+    assert list(query)[:3] == ["url", "html", "browserRendering"]
+    assert query["screenshot"] == capture
+
+
+@pytest.mark.parametrize(
+    ("rendering", "sent"), [(None, None), ("auto", None), ("true", "true"), ("false", "false")]
+)
+def test_scrape_html_without_screenshot_keeps_browser_rendering_input(
+    transport, rendering, sent
+) -> None:
+    _, requests = transport
+
+    _invoke("scrape_html", {"url": URL, "screenshot": "false", "browser_rendering": rendering})
+
+    assert _query(requests[0]).get("browserRendering") == sent
+
+
+def test_invalid_browser_rendering_is_rejected_even_with_a_screenshot(transport) -> None:
+    _, requests = transport
+
+    with pytest.raises(ParameterValidationError):
+        _invoke("scrape_html", {"url": URL, "screenshot": "top", "browser_rendering": "maybe"})
+
+    assert requests == []
+
+
+def test_scrape_json_screenshot_does_not_force_browser_rendering(transport) -> None:
+    _, requests = transport
+
+    _invoke("scrape_json", {"url": URL, "screenshot": True})
+
+    query = _query(requests[0])
+    assert query["screenshot"] == "true"
+    assert "browserRendering" not in query
 
 
 def test_scrape_markdown_defaults_return_markdown_text(transport) -> None:
@@ -591,6 +642,8 @@ def test_every_schema_parameter_reaches_the_wire(transport, operation: str) -> N
     query = _query(requests[0])
     for name, value in values.items():
         expected = str(value).lower() if isinstance(value, bool) else str(value)
+        if operation == "scrape_html" and name == "browser_rendering":
+            expected = "true"  # The sample screenshot forces browser rendering.
         assert query[WIRE_NAMES.get(name, name)] == expected, name
 
 

@@ -20,7 +20,7 @@ The contract mirrors the MrScraper Python SDK and CLI. Every request sends `Auth
 
 - **Status:** `GET https://api.app.mrscraper.com/api/v1/subscription-accounts`, 600-second deadline. Return the body unchanged.
 - **Page services:** `GET https://api.mrscraper.com` with every field in the query string, in the documented order, and a deadline of `timeout + 30` seconds. Send only the parameters the Scraper API reference lists. Always send `url`, `timeout` (1–330, default 300), `saveResult` (default `true`), and `maxAge` (0–604800000, default 0); send `waitForSelector` (up to 500 characters), `geoCode`, `tokenCap` (at least 1), and `maxRetries` (at least 0) only when set.
-  - **Scrape HTML:** `html=true`, optional `browserRendering` (omitted for `auto`), `warmStart`, `blockResources`, optional `action`, and `screenshot` (`false`, `full`, `top`, or `WIDTHxHEIGHT` with an optional `-ZOOM`; default `false`).
+  - **Scrape HTML:** `html=true`, optional `browserRendering` (omitted for `auto`), `warmStart`, `blockResources`, optional `action`, and `screenshot` (`false`, `full`, `top`, or `WIDTHxHEIGHT` with an optional `-ZOOM`; default `false`). Any screenshot other than `false` also sends `browserRendering=true`, overriding the `browser_rendering` input.
   - **Scrape Markdown:** `markdown=true`, optional `browserRendering`, `warmStart`, `blockResources`, and optional `action`.
   - **Get screenshot:** `screenshot=full` and `browserRendering=true`, plus the shared page controls only.
   - **Scrape JSON:** `prompt`, `agent=general`, `html` (default `true`), optional `browserRendering`, `warmStart`, `blockResources`, and a boolean `screenshot`. Above an 8,000-character encoded URL, switch to `POST` and move `url`, `prompt`, and `agent` to the JSON body.

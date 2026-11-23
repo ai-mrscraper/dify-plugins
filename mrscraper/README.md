@@ -31,7 +31,7 @@ Your Dify deployment must allow outbound HTTPS connections to `api.mrscraper.com
 
 HTML, Markdown, screenshots, and JSON extraction share `url`, `timeout`, `wait_for_selector`, `geo_code`, `save_result`, `max_age`, `token_cap`, and `max_retries`. Defaults are a 300-second timeout (up to 330), dashboard saving on, and a `max_age` of 0 milliseconds, which always scrapes fresh; `max_age` accepts up to 604800000 (7 days). Leave `geo_code`, `token_cap`, and `max_retries` empty to omit them, so the API loads the page from the United States with no token or retry limit.
 
-HTML, Markdown, and JSON extraction also accept `browser_rendering`, `warm_start`, and `block_resources`; HTML and Markdown also accept `action`. `browser_rendering` is a select: `auto` (the default) leaves it out so the API loads the page without a browser first and switches to one if the request is blocked, `true` always renders, and `false` never does. `wait_for_selector` needs a rendered page, so do not combine it with `false`. Screenshots always render in a browser.
+HTML, Markdown, and JSON extraction also accept `browser_rendering`, `warm_start`, and `block_resources`; HTML and Markdown also accept `action`. `browser_rendering` is a select: `auto` (the default) leaves it out so the API loads the page without a browser first and switches to one if the request is blocked, `true` always renders, and `false` never does. `wait_for_selector` needs a rendered page, so do not combine it with `false`. A Scrape HTML screenshot sends `browserRendering=true` regardless of `browser_rendering`, and Get screenshot always renders in a browser.
 
 Each tool adds its documented fixed request fields automatically: `html=true` for Scrape HTML, `markdown=true` for Scrape Markdown, `screenshot=full` and `browserRendering=true` for Get screenshot, `action=brand-scraping` and `bundle=none` for Scrape brand, `agent=general` for Scrape JSON, and `action=websearch` for Web search.
 
@@ -92,9 +92,9 @@ Retrieve the raw HTML of a page. Browser rendering is optional.
 | `max_age` | `maxAge` | integer | `0` | Return a cached result of the same request when it is newer than the selected age. A cached result costs the same tokens as the original scrape. |
 | `token_cap` | `tokenCap` | integer | Omitted | Maximum total tokens the scrape and its retries can use, as a positive integer. Omit this parameter for no limit. |
 | `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |
-| `screenshot` | `screenshot` | string | `false` | Screenshot to capture with the HTML: false for none, full for the entire page, top for the first viewport, or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an optional -ZOOM percent from 25 to 300, such as 1280x800 or 1920x1080-75. Any screenshot forces browser rendering. |
+| `screenshot` | `screenshot` | string | `false` | Screenshot to capture with the HTML: false for none, full for the entire page, top for the first viewport, or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an optional -ZOOM percent from 25 to 300, such as 1280x800 or 1920x1080-75. Setting a screenshot also sends browserRendering=true. |
 
-The plugin sends `html=true`. Any screenshot forces browser rendering and returns JSON with `html` and `screenshot`.
+The plugin sends `html=true`. Setting a screenshot also sends `browserRendering=true`, whatever `browser_rendering` is set to, and the API returns JSON with `html` and `screenshot`.
 
 Example input:
 
@@ -344,7 +344,7 @@ Page tools (HTML, Markdown, screenshot, and JSON) allow `timeout` plus 30 second
 Version 0.4.0 matches the Scraper API reference. Tool IDs are unchanged; review the inputs of existing Agent and Workflow tool nodes:
 
 - Removed inputs: `super`, `wait_until`, `proxy_country`, `proxy`, and `return_cookie` on the page tools, `html` on Scrape Markdown, and `screenshot`, `html`, `markdown`, and `warm_start` on Get screenshot. Get screenshot always captures the full page.
-- New inputs: `max_age` and `token_cap` on the page tools, `action` on Scrape HTML and Scrape Markdown, and `screenshot` on Scrape HTML (`false`, `full`, `top`, or a custom viewport). Scrape JSON now accepts `warm_start`, `block_resources`, and `wait_for_selector`.
+- New inputs: `max_age` and `token_cap` on the page tools, `action` on Scrape HTML and Scrape Markdown, and `screenshot` on Scrape HTML (`false`, `full`, `top`, or a custom viewport; setting one also sends `browserRendering=true`). Scrape JSON now accepts `warm_start`, `block_resources`, and `wait_for_selector`.
 - `browser_rendering` is a select: `auto` (the default) leaves rendering to the API, `true` always renders, and `false` never does.
 - Changed defaults: `save_result` is `true`, Scrape JSON's `html` is `true`, `timeout` accepts up to 330 seconds, and `geo_code` and Web search's `country` are omitted unless set, so the API uses the United States.
 

@@ -80,9 +80,12 @@ def status_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
 
 
 def scrape_html_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    return _with_action(parameters, _loading(parameters)) | {
-        "screenshot": screenshot_capture(parameters.get("screenshot"), "screenshot")
-    }
+    result = _with_action(parameters, _loading(parameters))
+    capture = screenshot_capture(parameters.get("screenshot"), "screenshot")
+    if capture is not False:
+        # A screenshot needs a rendered page, so it always sends browserRendering=true.
+        result["browser_rendering"] = True
+    return result | {"screenshot": capture}
 
 
 def scrape_markdown_parameters(parameters: dict[str, Any]) -> dict[str, Any]:

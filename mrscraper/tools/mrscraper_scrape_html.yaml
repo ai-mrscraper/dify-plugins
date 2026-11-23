@@ -163,10 +163,10 @@ parameters:
   human_description:
     en_US: 'Screenshot to capture with the HTML: false for none, full for the entire page, top for the
       first viewport, or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an optional -ZOOM percent
-      from 25 to 300, such as 1280x800 or 1920x1080-75. Any screenshot forces browser rendering.'
+      from 25 to 300, such as 1280x800 or 1920x1080-75. Setting a screenshot also sends browserRendering=true.'
   llm_description: 'Screenshot to capture with the HTML: false for none, full for the entire page, top
     for the first viewport, or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an optional -ZOOM
-    percent from 25 to 300, such as 1280x800 or 1920x1080-75. Any screenshot forces browser rendering.'
+    percent from 25 to 300, such as 1280x800 or 1920x1080-75. Setting a screenshot also sends browserRendering=true.'
   form: llm
   default: 'false'
 extra:
