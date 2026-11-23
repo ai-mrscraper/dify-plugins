@@ -66,7 +66,7 @@ SERVICE_PARAMETERS = {
     "scrape_html": ["url", *LOADING, "action", *CACHE, "screenshot"],
     "scrape_markdown": ["url", *LOADING, "action", *CACHE],
     "get_screenshot": ["url", "timeout", "wait_for_selector", *CACHE],
-    "scrape_brand": ["url"],
+    "scrape_brand": ["url", "timeout", "warm_start", "geo_code"],
     "scrape_json": ["url", "prompt", "html", *LOADING, *CACHE, "screenshot"],
     "web_search": ["query", "country", "num_results"],
 }

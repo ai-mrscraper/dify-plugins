@@ -10,7 +10,7 @@ API_URL = "https://api.mrscraper.com"
 ACCOUNT_URL = "https://api.app.mrscraper.com/api/v1/subscription-accounts"
 DEFAULT_JSON_PROMPT = "Extract all data as complete as possible."
 STATUS_TIMEOUT = 600.0
-BRAND_AND_SEARCH_TIMEOUT = 120.0
+SEARCH_TIMEOUT = 120.0
 TRANSPORT_GRACE_SECONDS = 30
 MAX_GET_URL_LENGTH = 8000
 TEXT_TYPES = {"application/xml", "application/xhtml+xml", "application/javascript"}
@@ -192,12 +192,26 @@ class MrscraperClient:
         body = {key: params.pop(key) for key in ("url", "prompt", "agent")}
         return self._request("POST", _endpoint(params), timeout=timeout, payload=body)
 
-    def scrape_brand(self, *, url: str) -> Any:
+    def scrape_brand(
+        self,
+        *,
+        url: str,
+        timeout: int = 300,
+        warm_start: bool = False,
+        geo_code: str | None = None,
+    ) -> Any:
         """Extract a website's colors, typography, logos, and social links as JSON."""
+        params: dict[str, Any] = {
+            "action": "brand-scraping",
+            "url": url,
+            "bundle": "none",
+            "timeout": timeout,
+            "warmStart": warm_start,
+        }
+        if geo_code is not None:
+            params["geoCode"] = geo_code
         return self._request(
-            "GET",
-            _endpoint({"action": "brand-scraping", "url": url, "bundle": "none"}),
-            timeout=BRAND_AND_SEARCH_TIMEOUT,
+            "GET", _endpoint(params), timeout=float(timeout + TRANSPORT_GRACE_SECONDS)
         )
 
     def web_search(self, *, query: str, country: str | None = None, num_results: int = 10) -> Any:
@@ -206,7 +220,7 @@ class MrscraperClient:
         if country is not None:
             params["country"] = country
         params["numResults"] = num_results
-        return self._request("GET", _endpoint(params), timeout=BRAND_AND_SEARCH_TIMEOUT)
+        return self._request("GET", _endpoint(params), timeout=SEARCH_TIMEOUT)
 
     def _request(
         self,

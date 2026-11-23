@@ -97,7 +97,17 @@ def get_screenshot_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
 
 
 def scrape_brand_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    return {"url": web_url(parameters.get("url"))}
+    result: dict[str, Any] = {
+        "url": web_url(parameters.get("url")),
+        "timeout": integer(
+            parameters.get("timeout"), "timeout", default=300, minimum=1, maximum=MAX_TIMEOUT
+        ),
+        "warm_start": _flag(parameters, "warm_start", False),
+    }
+    geo_code = optional_country_code(parameters.get("geo_code"), "geo_code")
+    if geo_code is not None:
+        result["geo_code"] = geo_code
+    return result
 
 
 def scrape_json_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
