@@ -12,6 +12,7 @@ DEFAULT_JSON_PROMPT = "Extract all data as complete as possible."
 STATUS_TIMEOUT = 600.0
 SEARCH_TIMEOUT = 120.0
 TRANSPORT_GRACE_SECONDS = 30
+DEFAULT_PAGE_TIMEOUT = 300
 MAX_GET_URL_LENGTH = 8000
 TEXT_TYPES = {"application/xml", "application/xhtml+xml", "application/javascript"}
 OPERATIONS = frozenset(
@@ -109,9 +110,7 @@ class MrscraperClient:
         timeout: int = 300,
         wait_for_selector: str | None = None,
         geo_code: str | None = None,
-        save_result: bool = True,
         max_age: int = 0,
-        token_cap: int | None = None,
         max_retries: int | None = None,
         browser_rendering: bool | None = None,
         warm_start: bool | None = None,
@@ -127,9 +126,9 @@ class MrscraperClient:
             "waitForSelector": wait_for_selector,
             "action": action,
             "geoCode": geo_code,
-            "saveResult": save_result,
+            # Results are always saved to the dashboard; saveResult is not an input.
+            "saveResult": True,
             "maxAge": max_age,
-            "tokenCap": token_cap,
             "maxRetries": max_retries,
         }
         return {"url": url} | {key: value for key, value in fields.items() if value is not None}
@@ -155,7 +154,7 @@ class MrscraperClient:
         """Retrieve the raw HTML of a page. Browser rendering is optional."""
         fields = self._page_fields(warm_start=warm_start, block_resources=block_resources, **page)
         return self._page_request(
-            self._after_url({"html": True}, fields) | {"screenshot": screenshot}
+            self._after_url({"html": True, "markdown": False}, fields) | {"screenshot": screenshot}
         )
 
     def scrape_markdown(
@@ -163,12 +162,16 @@ class MrscraperClient:
     ) -> Any:
         """Retrieve a page as clean Markdown. Browser rendering is optional."""
         fields = self._page_fields(warm_start=warm_start, block_resources=block_resources, **page)
-        return self._page_request(self._after_url({"markdown": True}, fields))
+        return self._page_request(
+            self._after_url({"markdown": True, "html": False, "screenshot": False}, fields)
+        )
 
     def get_screenshot(self, **page: Any) -> Any:
         """Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled."""
         fields = self._page_fields(browser_rendering=True, **page)
-        return self._page_request(self._after_url({"screenshot": "full"}, fields))
+        return self._page_request(
+            self._after_url({"screenshot": "full", "html": False, "markdown": False}, fields)
+        )
 
     def scrape_json(
         self,
@@ -196,23 +199,20 @@ class MrscraperClient:
         self,
         *,
         url: str,
-        timeout: int = 300,
+        timeout: int | None = None,
         warm_start: bool = False,
         geo_code: str | None = None,
     ) -> Any:
         """Extract a website's colors, typography, logos, and social links as JSON."""
-        params: dict[str, Any] = {
-            "action": "brand-scraping",
-            "url": url,
-            "bundle": "none",
-            "timeout": timeout,
-            "warmStart": warm_start,
-        }
+        params: dict[str, Any] = {"action": "brand-scraping", "url": url, "bundle": "none"}
+        # timeout and geoCode are sent only when set.
+        if timeout is not None:
+            params["timeout"] = timeout
+        params["warmStart"] = warm_start
         if geo_code is not None:
             params["geoCode"] = geo_code
-        return self._request(
-            "GET", _endpoint(params), timeout=float(timeout + TRANSPORT_GRACE_SECONDS)
-        )
+        deadline = (DEFAULT_PAGE_TIMEOUT if timeout is None else timeout) + TRANSPORT_GRACE_SECONDS
+        return self._request("GET", _endpoint(params), timeout=float(deadline))
 
     def web_search(self, *, query: str, country: str | None = None, num_results: int = 10) -> Any:
         """Search the web and return ranked results."""

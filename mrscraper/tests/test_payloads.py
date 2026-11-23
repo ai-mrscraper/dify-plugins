@@ -44,8 +44,11 @@ REMOVED = {
     "proxy": "http://proxy.example.com:8080",
     "return_cookie": True,
     "markdown": True,
+    # Removed inputs: results are always saved and tokenCap is never sent.
+    "save_result": False,
+    "token_cap": 50,
 }
-REMOVED_WIRE = {"super", "waitUntil", "proxyCountry", "proxy", "returnCookie", "markdown"}
+REMOVED_WIRE = {"super", "waitUntil", "proxyCountry", "proxy", "returnCookie", "tokenCap"}
 
 
 @pytest.fixture
@@ -141,6 +144,7 @@ def test_scrape_html_defaults_send_the_full_get_query_and_emit_text(transport) -
     assert query == {
         "url": URL,
         "html": "true",
+        "markdown": "false",
         **SHARED_DEFAULT_QUERY,
         **LOADING_DEFAULT_QUERY,
         "screenshot": "false",
@@ -148,6 +152,7 @@ def test_scrape_html_defaults_send_the_full_get_query_and_emit_text(transport) -
     assert list(query) == [
         "url",
         "html",
+        "markdown",
         "timeout",
         "warmStart",
         "blockResources",
@@ -173,9 +178,7 @@ def test_scrape_html_sends_every_documented_control_in_order(transport) -> None:
             "wait_for_selector": " body ",
             "action": " product-flow ",
             "geo_code": "ID",
-            "save_result": False,
             "max_age": 3600000,
-            "token_cap": 50,
             "max_retries": 0,
             "screenshot": "1920x1080-75",
             **REMOVED,
@@ -187,6 +190,7 @@ def test_scrape_html_sends_every_documented_control_in_order(transport) -> None:
     assert list(query.items()) == [
         ("url", URL),
         ("html", "true"),
+        ("markdown", "false"),
         ("browserRendering", "true"),
         ("timeout", "120"),
         ("warmStart", "true"),
@@ -194,9 +198,8 @@ def test_scrape_html_sends_every_documented_control_in_order(transport) -> None:
         ("waitForSelector", "body"),
         ("action", "product-flow"),
         ("geoCode", "id"),
-        ("saveResult", "false"),
+        ("saveResult", "true"),
         ("maxAge", "3600000"),
-        ("tokenCap", "50"),
         ("maxRetries", "0"),
         ("screenshot", "1920x1080-75"),
     ]
@@ -260,7 +263,7 @@ def test_scrape_html_screenshot_always_sends_browser_rendering(
 
     query = _query(requests[0])
     assert query["browserRendering"] == "true"
-    assert list(query)[:3] == ["url", "html", "browserRendering"]
+    assert list(query)[:4] == ["url", "html", "markdown", "browserRendering"]
     assert query["screenshot"] == capture
 
 
@@ -308,12 +311,16 @@ def test_scrape_markdown_defaults_return_markdown_text(transport) -> None:
 
     assert messages[0].message.text == "# Example page"
     request = requests[0]
-    assert _query(request) == {
+    query = _query(request)
+    assert query == {
         "url": URL,
         "markdown": "true",
+        "html": "false",
+        "screenshot": "false",
         **SHARED_DEFAULT_QUERY,
         **LOADING_DEFAULT_QUERY,
     }
+    assert list(query)[:4] == ["url", "markdown", "html", "screenshot"]
     _assert_authenticated(request, 330)
 
 
@@ -327,7 +334,6 @@ def test_scrape_markdown_sends_rendering_action_and_cache_controls(transport) ->
             "browser_rendering": "true",
             "action": "docs",
             "max_age": 86400000,
-            "token_cap": 5,
             "geo_code": "gb",
         },
     )
@@ -335,6 +341,8 @@ def test_scrape_markdown_sends_rendering_action_and_cache_controls(transport) ->
     assert list(_query(requests[0]).items()) == [
         ("url", URL),
         ("markdown", "true"),
+        ("html", "false"),
+        ("screenshot", "false"),
         ("browserRendering", "true"),
         ("timeout", "300"),
         ("warmStart", "false"),
@@ -343,7 +351,6 @@ def test_scrape_markdown_sends_rendering_action_and_cache_controls(transport) ->
         ("geoCode", "gb"),
         ("saveResult", "true"),
         ("maxAge", "86400000"),
-        ("tokenCap", "5"),
     ]
 
 
@@ -360,6 +367,8 @@ def test_get_screenshot_always_sends_a_full_page_rendered_capture(transport) -> 
     assert list(_query(request).items()) == [
         ("url", URL),
         ("screenshot", "full"),
+        ("html", "false"),
+        ("markdown", "false"),
         ("browserRendering", "true"),
         ("timeout", "300"),
         ("saveResult", "true"),
@@ -378,9 +387,7 @@ def test_get_screenshot_sends_its_documented_controls_only(transport) -> None:
             "timeout": 120,
             "wait_for_selector": "#results",
             "geo_code": "DE",
-            "save_result": False,
             "max_age": 0,
-            "token_cap": 10,
             "max_retries": 1,
             # Not Get screenshot inputs: the area and rendering are fixed.
             "screenshot": "top",
@@ -396,18 +403,19 @@ def test_get_screenshot_sends_its_documented_controls_only(transport) -> None:
     assert list(_query(requests[0]).items()) == [
         ("url", URL),
         ("screenshot", "full"),
+        ("html", "false"),
+        ("markdown", "false"),
         ("browserRendering", "true"),
         ("timeout", "120"),
         ("waitForSelector", "#results"),
         ("geoCode", "de"),
-        ("saveResult", "false"),
+        ("saveResult", "true"),
         ("maxAge", "0"),
-        ("tokenCap", "10"),
         ("maxRetries", "1"),
     ]
 
 
-def test_scrape_brand_sends_the_brand_action_with_default_controls(transport) -> None:
+def test_scrape_brand_sends_warm_start_and_omits_an_unset_timeout(transport) -> None:
     configure, requests = transport
     body = {"data": {"status": "succeeded", "brand": {"name": "Example brand"}}}
     configure(lambda request: httpx.Response(200, json=body))
@@ -421,9 +429,9 @@ def test_scrape_brand_sends_the_brand_action_with_default_controls(transport) ->
         ("action", "brand-scraping"),
         ("url", URL),
         ("bundle", "none"),
-        ("timeout", "300"),
         ("warmStart", "false"),
     ]
+    # Without a timeout, the HTTP request allows 300 + 30 seconds.
     _assert_authenticated(request, 330)
 
 
@@ -442,6 +450,14 @@ def test_scrape_brand_sends_timeout_warm_start_and_geo_code(transport) -> None:
         ("geoCode", "gb"),
     ]
     _assert_authenticated(request, 150)
+
+    _invoke("scrape_brand", {"url": URL, "timeout": None, "geo_code": " "})
+    assert list(_query(requests[-1]).items()) == [
+        ("action", "brand-scraping"),
+        ("url", URL),
+        ("bundle", "none"),
+        ("warmStart", "false"),
+    ]
 
 
 def test_scrape_json_defaults_use_the_general_agent_and_include_html(transport) -> None:
@@ -490,7 +506,6 @@ def test_scrape_json_sends_loading_controls_and_boolean_screenshot(transport) ->
             "wait_for_selector": "body",
             "geo_code": "SG",
             "max_age": 60000,
-            "token_cap": 20,
             "max_retries": 2,
             "screenshot": True,
             "action": "ignored",
@@ -511,7 +526,6 @@ def test_scrape_json_sends_loading_controls_and_boolean_screenshot(transport) ->
         ("geoCode", "sg"),
         ("saveResult", "true"),
         ("maxAge", "60000"),
-        ("tokenCap", "20"),
         ("maxRetries", "2"),
         ("screenshot", "true"),
     ]
@@ -605,11 +619,11 @@ def test_removed_options_never_reach_the_wire(transport, operation: str) -> None
     _invoke(operation, {"url": URL, **REMOVED})
 
     query = _query(requests[0])
-    # markdown=true is Scrape Markdown's fixed field; it is never an input.
-    fixed = {"markdown"} if operation == "scrape_markdown" else set()
-    assert (REMOVED_WIRE - fixed).isdisjoint(query)
-    if fixed:
-        assert query["markdown"] == "true"
+    assert REMOVED_WIRE.isdisjoint(query)
+    # Fixed fields cannot be changed through inputs.
+    assert query["saveResult"] == "true"
+    expected_markdown = {"scrape_html": "false", "scrape_markdown": "true"}.get(operation)
+    assert query.get("markdown") == expected_markdown
 
 
 def _sample_value(parameter: dict) -> Any:
@@ -757,14 +771,10 @@ PAGE_INVALID = [
     {"geo_code": 1},
     {"max_retries": -1},
     {"max_retries": 1.5},
-    {"save_result": 1},
-    {"save_result": "false"},
     {"max_age": -1},
     {"max_age": 604800001},
     {"max_age": 1.5},
     {"max_age": True},
-    {"token_cap": 0},
-    {"token_cap": 1.5},
     {"wait_for_selector": "a" * 501},
     {"wait_for_selector": 3},
 ]

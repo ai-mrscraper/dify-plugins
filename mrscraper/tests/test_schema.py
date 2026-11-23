@@ -40,11 +40,8 @@ PARAMETER_DESCRIPTIONS = {
     "action": "Scraper action that routes the request or simply flags it, useful for separating "
     "analytics per domain.",
     "geo_code": "Two-letter country code to load the page from, sent in lowercase.",
-    "save_result": "Whether to save the result to the dashboard Result tab.",
     "max_age": "Return a cached result of the same request when it is newer than the selected "
     "age. A cached result costs the same tokens as the original scrape.",
-    "token_cap": "Maximum total tokens the scrape and its retries can use, as a positive integer. "
-    "Omit this parameter for no limit.",
     "max_retries": "Maximum number of retries, as a nonnegative integer. Omit this parameter for "
     "no limit.",
     "query": "Search query text, trimmed before sending, containing 1 to 1000 characters.",
@@ -60,7 +57,7 @@ SCREENSHOT_DESCRIPTIONS = {
     "scrape_json": "Whether to include a base64 screenshot in the response.",
 }
 LOADING = ["browser_rendering", "timeout", "warm_start", "block_resources", "wait_for_selector"]
-CACHE = ["geo_code", "save_result", "max_age", "token_cap", "max_retries"]
+CACHE = ["geo_code", "max_age", "max_retries"]
 SERVICE_PARAMETERS = {
     "status": [],
     "scrape_html": ["url", *LOADING, "action", *CACHE, "screenshot"],
@@ -71,8 +68,9 @@ SERVICE_PARAMETERS = {
     "web_search": ["query", "country", "num_results"],
 }
 # Inputs without a default are omitted from the request unless set.
-OMITTED = {"url", "query", "wait_for_selector", "action", "geo_code", "token_cap", "max_retries"}
-OMITTED |= {"country"}
+OMITTED = {"url", "query", "wait_for_selector", "action", "geo_code", "max_retries", "country"}
+# Scrape brand sends timeout only when it is set.
+OMITTED_BY_SERVICE = {"scrape_brand": {"timeout"}}
 DEFAULTS = {
     "prompt": "Extract all data as complete as possible.",
     "html": True,
@@ -80,7 +78,6 @@ DEFAULTS = {
     "timeout": 300,
     "warm_start": False,
     "block_resources": False,
-    "save_result": True,
     "max_age": 0,
     "num_results": 10,
 }
@@ -140,7 +137,7 @@ def test_schema_defaults_and_types_follow_the_reference(operation: str) -> None:
     parameters = {parameter["name"]: parameter for parameter in _schema(operation)["parameters"]}
 
     for name, parameter in parameters.items():
-        if name in OMITTED:
+        if name in OMITTED | OMITTED_BY_SERVICE.get(operation, set()):
             assert "default" not in parameter, name
         elif name == "screenshot":
             continue
@@ -162,10 +159,9 @@ def test_schema_defaults_and_types_follow_the_reference(operation: str) -> None:
                 maximum,
             )
             assert parameter["precision"] == 0
-    for name, minimum in {"token_cap": 1, "max_retries": 0}.items():
-        if name in parameters:
-            assert (parameters[name]["min"], parameters[name]["precision"]) == (minimum, 0)
-            assert "max" not in parameters[name]
+    if "max_retries" in parameters:
+        assert (parameters["max_retries"]["min"], parameters["max_retries"]["precision"]) == (0, 0)
+        assert "max" not in parameters["max_retries"]
 
 
 def test_screenshot_parameter_forms_differ_by_service() -> None:
@@ -183,6 +179,7 @@ def test_screenshot_parameter_forms_differ_by_service() -> None:
 
 def test_removed_options_are_not_offered() -> None:
     removed = {"super", "wait_until", "proxy_country", "proxy", "return_cookie", "markdown"}
+    removed |= {"save_result", "token_cap"}
     for operation in SERVICE_DESCRIPTIONS:
         names = {parameter["name"] for parameter in _schema(operation)["parameters"]}
         assert names.isdisjoint(removed), operation

@@ -42,7 +42,6 @@ def _page(parameters: dict[str, Any]) -> dict[str, Any]:
         "timeout": integer(
             parameters.get("timeout"), "timeout", default=300, minimum=1, maximum=MAX_TIMEOUT
         ),
-        "save_result": _flag(parameters, "save_result", True),
         "max_age": integer(
             parameters.get("max_age"), "max_age", default=0, minimum=0, maximum=MAX_CACHE_AGE_MS
         ),
@@ -52,7 +51,6 @@ def _page(parameters: dict[str, Any]) -> dict[str, Any]:
             parameters.get("wait_for_selector"), "wait_for_selector", max_length=MAX_SELECTOR_LENGTH
         ),
         "geo_code": optional_country_code(parameters.get("geo_code"), "geo_code"),
-        "token_cap": optional_integer(parameters.get("token_cap"), "token_cap", minimum=1),
         "max_retries": optional_integer(parameters.get("max_retries"), "max_retries", minimum=0),
     }
     return result | {name: value for name, value in optional.items() if value is not None}
@@ -97,13 +95,12 @@ def get_screenshot_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
 
 
 def scrape_brand_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    result: dict[str, Any] = {
-        "url": web_url(parameters.get("url")),
-        "timeout": integer(
-            parameters.get("timeout"), "timeout", default=300, minimum=1, maximum=MAX_TIMEOUT
-        ),
-        "warm_start": _flag(parameters, "warm_start", False),
-    }
+    result: dict[str, Any] = {"url": web_url(parameters.get("url"))}
+    # Scrape brand has no default timeout: it is sent only when set.
+    timeout = parameters.get("timeout")
+    if timeout is not None and timeout != "":
+        result["timeout"] = integer(timeout, "timeout", minimum=1, maximum=MAX_TIMEOUT)
+    result["warm_start"] = _flag(parameters, "warm_start", False)
     geo_code = optional_country_code(parameters.get("geo_code"), "geo_code")
     if geo_code is not None:
         result["geo_code"] = geo_code

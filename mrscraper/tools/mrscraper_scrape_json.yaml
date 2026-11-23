@@ -119,16 +119,6 @@ parameters:
     en_US: Two-letter country code to load the page from, sent in lowercase.
   llm_description: Two-letter country code to load the page from, sent in lowercase.
   form: llm
-- name: save_result
-  type: boolean
-  required: false
-  label:
-    en_US: Save Result
-  human_description:
-    en_US: Whether to save the result to the dashboard Result tab.
-  llm_description: Whether to save the result to the dashboard Result tab.
-  form: llm
-  default: true
 - name: max_age
   type: number
   required: false
@@ -143,19 +133,6 @@ parameters:
   default: 0
   min: 0
   max: 604800000
-  precision: 0
-- name: token_cap
-  type: number
-  required: false
-  label:
-    en_US: Token Cap
-  human_description:
-    en_US: Maximum total tokens the scrape and its retries can use, as a positive integer. Omit this parameter
-      for no limit.
-  llm_description: Maximum total tokens the scrape and its retries can use, as a positive integer. Omit
-    this parameter for no limit.
-  form: llm
-  min: 1
   precision: 0
 - name: max_retries
   type: number

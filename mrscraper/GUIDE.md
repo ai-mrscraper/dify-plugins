@@ -19,12 +19,12 @@ Keep runtime dependencies synchronized between `pyproject.toml` and `requirement
 The contract mirrors the MrScraper Python SDK and CLI. Every request sends `Authorization: Bearer <token>`, `x-api-token: <token>`, `accept: application/json`, and `Content-Type: application/json`. The token is never placed in a URL. Booleans are serialized as `true`/`false`.
 
 - **Status:** `GET https://api.app.mrscraper.com/api/v1/subscription-accounts`, 600-second deadline. Return the body unchanged.
-- **Page services:** `GET https://api.mrscraper.com` with every field in the query string, in the documented order, and a deadline of `timeout + 30` seconds. Send only the parameters the Scraper API reference lists. Always send `url`, `timeout` (1–330, default 300), `saveResult` (default `true`), and `maxAge` (0–604800000, default 0); send `waitForSelector` (up to 500 characters), `geoCode`, `tokenCap` (at least 1), and `maxRetries` (at least 0) only when set.
-  - **Scrape HTML:** `html=true`, optional `browserRendering` (omitted for `auto`), `warmStart`, `blockResources`, optional `action`, and `screenshot` (`false`, `full`, `top`, or `WIDTHxHEIGHT` with an optional `-ZOOM`; default `false`). Any screenshot other than `false` also sends `browserRendering=true`, overriding the `browser_rendering` input.
-  - **Scrape Markdown:** `markdown=true`, optional `browserRendering`, `warmStart`, `blockResources`, and optional `action`.
-  - **Get screenshot:** `screenshot=full` and `browserRendering=true`, plus the shared page controls only.
+- **Page services:** `GET https://api.mrscraper.com` with every field in the query string, in the documented order, and a deadline of `timeout + 30` seconds. Send only the parameters the Scraper API reference lists. Always send `url`, `timeout` (1–330, default 300), `saveResult=true` (fixed, not an input), and `maxAge` (0–604800000, default 0); send `waitForSelector` (up to 500 characters), `geoCode`, and `maxRetries` (at least 0) only when set. Never send `tokenCap`.
+  - **Scrape HTML:** `html=true`, `markdown=false`, optional `browserRendering` (omitted for `auto`), `warmStart`, `blockResources`, optional `action`, and `screenshot` (`false`, `full`, `top`, or `WIDTHxHEIGHT` with an optional `-ZOOM`; default `false`). Any screenshot other than `false` also sends `browserRendering=true`, overriding the `browser_rendering` input.
+  - **Scrape Markdown:** `markdown=true`, `html=false`, `screenshot=false`, optional `browserRendering`, `warmStart`, `blockResources`, and optional `action`.
+  - **Get screenshot:** `screenshot=full`, `html=false`, `markdown=false`, and `browserRendering=true`, plus the shared page controls only. The API still returns the page HTML.
   - **Scrape JSON:** `prompt`, `agent=general`, `html` (default `true`), optional `browserRendering`, `warmStart`, `blockResources`, and a boolean `screenshot`. Above an 8,000-character encoded URL, switch to `POST` and move `url`, `prompt`, and `agent` to the JSON body.
-- **Scrape brand:** `GET https://api.mrscraper.com?action=brand-scraping&url=...&bundle=none&timeout=..&warmStart=..`, with `geoCode` only when set and a deadline of `timeout + 30` seconds.
+- **Scrape brand:** `GET https://api.mrscraper.com?action=brand-scraping&url=...&bundle=none`, then `timeout` only when set, `warmStart` (default `false`), and `geoCode` only when set. The deadline is `timeout + 30` seconds, or 330 seconds without a timeout.
 - **Web search:** `GET https://api.mrscraper.com?action=websearch&query=...&numResults=..`, 120-second deadline. `country` is sent only when set; `numResults` is an integer from 10 to 100.
 - A `401` response means the token is invalid.
 
@@ -53,7 +53,7 @@ Keep `.env` and tokens out of source control and packaged artifacts.
 
 ## Release consistency
 
-Keep the plugin version consistent across `pyproject.toml` and `manifest.yaml`. Confirm that the manifest network domains (`api.app.mrscraper.com`, `api.mrscraper.com`) match the client endpoints and that the runner uses Python 3.12. Check the 660-second plugin request ceiling in `main.py`. Page services and Scrape brand default to 300 seconds plus 30 seconds for transport; Web search uses 120 seconds; Status uses 600 seconds. Infrastructure may impose shorter deadlines.
+Keep the plugin version consistent across `pyproject.toml` and `manifest.yaml`. Confirm that the manifest network domains (`api.app.mrscraper.com`, `api.mrscraper.com`) match the client endpoints and that the runner uses Python 3.12. Check the 660-second plugin request ceiling in `main.py`. Page services default to 300 seconds plus 30 seconds for transport, and Scrape brand allows its timeout (300 seconds when omitted) plus 30 seconds; Web search uses 120 seconds; Status uses 600 seconds. Infrastructure may impose shorter deadlines.
 
 Before packaging, run tests and lint, check dependencies and the lockfile, and review README and PRIVACY against the final code. Packaging and publication are separate release actions; this guide does not perform them.
 
