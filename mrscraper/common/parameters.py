@@ -19,6 +19,7 @@ from common.validation import (
     optional_integer,
     optional_string,
     optional_tristate,
+    screenshot_area,
     screenshot_capture,
     web_url,
 )
@@ -91,7 +92,9 @@ def scrape_markdown_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_screenshot_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    return _page(parameters)
+    return _page(parameters) | {
+        "screenshot": screenshot_area(parameters.get("screenshot"), "screenshot")
+    }
 
 
 def scrape_brand_parameters(parameters: dict[str, Any]) -> dict[str, Any]:

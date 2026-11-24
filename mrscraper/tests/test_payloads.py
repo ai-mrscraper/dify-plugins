@@ -384,13 +384,13 @@ def test_get_screenshot_sends_its_documented_controls_only(transport) -> None:
         "get_screenshot",
         {
             "url": URL,
+            "screenshot": "1920x1080-75",
             "timeout": 120,
             "wait_for_selector": "#results",
             "geo_code": "DE",
             "max_age": 0,
             "max_retries": 1,
-            # Not Get screenshot inputs: the area and rendering are fixed.
-            "screenshot": "top",
+            # Not Get screenshot inputs: the outputs and rendering are fixed.
             "browser_rendering": "false",
             "warm_start": True,
             "block_resources": True,
@@ -402,7 +402,7 @@ def test_get_screenshot_sends_its_documented_controls_only(transport) -> None:
 
     assert list(_query(requests[0]).items()) == [
         ("url", URL),
-        ("screenshot", "full"),
+        ("screenshot", "1920x1080-75"),
         ("html", "false"),
         ("markdown", "false"),
         ("browserRendering", "true"),
@@ -413,6 +413,75 @@ def test_get_screenshot_sends_its_documented_controls_only(transport) -> None:
         ("maxAge", "0"),
         ("maxRetries", "1"),
     ]
+
+
+@pytest.mark.parametrize(
+    ("value", "sent"),
+    [
+        (None, "full"),
+        ("", "full"),
+        ("full", "full"),
+        ("top", "top"),
+        ("100x100", "100x100"),
+        ("1280x800", "1280x800"),
+        ("1920x1080-75", "1920x1080-75"),
+        ("3840x3840-300", "3840x3840-300"),
+        ("1280x800-25", "1280x800-25"),
+    ],
+)
+def test_get_screenshot_sends_the_requested_area(transport, value, sent) -> None:
+    _, requests = transport
+
+    _invoke("get_screenshot", {"url": URL, "screenshot": value})
+
+    query = _query(requests[0])
+    assert list(query.items())[:5] == [
+        ("url", URL),
+        ("screenshot", sent),
+        ("html", "false"),
+        ("markdown", "false"),
+        ("browserRendering", "true"),
+    ]
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        False,
+        True,
+        "false",
+        "true",
+        "FULL",
+        "bottom",
+        "99x800",
+        "1280x3841",
+        "1280x800-24",
+        "1280x800-301",
+        "12345x800",
+        1280,
+    ],
+)
+def test_get_screenshot_rejects_other_areas_before_http(transport, value) -> None:
+    _, requests = transport
+
+    with pytest.raises(ParameterValidationError, match="screenshot must be full, top"):
+        _invoke("get_screenshot", {"url": URL, "screenshot": value})
+
+    assert requests == []
+
+
+@pytest.mark.parametrize(
+    "value",
+    ["1280x800\n", " 1280x800", "1280x800 ", "\u0661\u0662\u0668\u0660x800", "1280x800-75\n"],
+)
+@pytest.mark.parametrize("operation", ["scrape_html", "get_screenshot"])
+def test_screenshot_viewports_must_be_exact_ascii(transport, operation, value) -> None:
+    _, requests = transport
+
+    with pytest.raises(ParameterValidationError, match="screenshot must be"):
+        _invoke(operation, {"url": URL, "screenshot": value})
+
+    assert requests == []
 
 
 def test_scrape_brand_requests_the_brand_action_only(transport) -> None:

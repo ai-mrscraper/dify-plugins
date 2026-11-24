@@ -22,7 +22,7 @@ Your Dify deployment must allow outbound HTTPS connections to `api.mrscraper.com
 | [Status](#status) | `mrscraper_status` | Return the raw account status API response without summarizing, redacting body fields, or adding calculated fields. |
 | [Scrape HTML](#scrape-html) | `mrscraper_scrape_html` | Retrieve the raw HTML of a page. Browser rendering is optional. |
 | [Scrape Markdown](#scrape-markdown) | `mrscraper_scrape_markdown` | Retrieve a page as clean Markdown. Browser rendering is optional. |
-| [Get screenshot](#get-screenshot) | `mrscraper_get_screenshot` | Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled. |
+| [Get screenshot](#get-screenshot) | `mrscraper_get_screenshot` | Capture a base64 PNG screenshot of the full page, the first viewport, or a custom viewport. Browser rendering is always enabled. |
 | [Scrape brand](#scrape-brand) | `mrscraper_scrape_brand` | Extract a website's colors, typography, logos, and social links as JSON. |
 | [Scrape JSON](#scrape-json) | `mrscraper_scrape_json` | Extract structured JSON from a page using a natural-language prompt. Append Json Schema: and a JSON schema to shape the output. |
 | [Web search](#web-search) | `mrscraper_web_search` | Search the web and return ranked results with titles, URLs, descriptions, and sources. |
@@ -33,7 +33,7 @@ HTML, Markdown, screenshots, and JSON extraction share `url`, `timeout`, `wait_f
 
 HTML, Markdown, and JSON extraction also accept `browser_rendering`, `warm_start`, and `block_resources`; HTML and Markdown also accept `action`. `browser_rendering` is a select: `auto` (the default) leaves it out so the API loads the page without a browser first and switches to one if the request is blocked, `true` always renders, and `false` never does. `wait_for_selector` needs a rendered page, so do not combine it with `false`. A Scrape HTML screenshot sends `browserRendering=true` regardless of `browser_rendering`, and Get screenshot always renders in a browser.
 
-Each tool adds its documented fixed request fields automatically: `html=true` and `markdown=false` for Scrape HTML; `markdown=true`, `html=false`, and `screenshot=false` for Scrape Markdown; `screenshot=full`, `html=false`, `markdown=false`, and `browserRendering=true` for Get screenshot; `saveResult=true` for the page tools; `action=brand-scraping` and `bundle=none` for Scrape brand; `agent=general` for Scrape JSON; and `action=websearch` for Web search.
+Each tool adds its documented fixed request fields automatically: `html=true` and `markdown=false` for Scrape HTML; `markdown=true`, `html=false`, and `screenshot=false` for Scrape Markdown; `html=false`, `markdown=false`, and `browserRendering=true` after the area for Get screenshot; `saveResult=true` for the page tools; `action=brand-scraping` and `bundle=none` for Scrape brand; `agent=general` for Scrape JSON; and `action=websearch` for Web search.
 
 Leave an optional input empty to use its default. Country codes are sent in lowercase.
 
@@ -148,30 +148,31 @@ The response body is Markdown text, returned as a text message.
 
 ## Get screenshot
 
-Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled.
+Capture a base64 PNG screenshot of the full page, the first viewport, or a custom viewport. Browser rendering is always enabled.
 
 | Parameter | HTTP field | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `url` | `url` | string | Required | Absolute HTTP or HTTPS URL of the page to process. |
+| `screenshot` | `screenshot` | string | `"full"` | Screenshot area to capture: full for the entire scroll height, top for the first viewport, or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an optional -ZOOM percent from 25 to 300, such as 1280x800 or 1920x1080-75. |
 | `timeout` | `timeout` | integer | `300` | Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional seconds. |
 | `wait_for_selector` | `waitForSelector` | string | Omitted | CSS selector or text to wait for on the page before returning the result, up to 500 characters. |
 | `geo_code` | `geoCode` | string | Omitted | Two-letter country code to load the page from, sent in lowercase. |
 | `max_age` | `maxAge` | integer | `0` | Return a cached result of the same request when it is newer than the selected age. A cached result costs the same tokens as the original scrape. |
 | `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |
 
-The plugin sends `screenshot=full`, `html=false`, `markdown=false`, and `browserRendering=true`; the screenshot area, outputs, and browser rendering are not inputs.
+The plugin sends the `screenshot` area followed by `html=false`, `markdown=false`, and `browserRendering=true`; the outputs and browser rendering are not inputs. Any other `screenshot` value, including `false`, is rejected before a request is made.
 
 Example input:
 
 ```json
 {
   "url": "https://example.com",
-  "wait_for_selector": "body",
+  "screenshot": "top",
   "timeout": 120
 }
 ```
 
-The response body is JSON containing a base64 PNG screenshot of the full page and the page HTML, which the API includes even though `html=false` is sent.
+The response body is JSON containing a base64 PNG screenshot and the page HTML, which the API includes even though `html=false` is sent.
 
 ```json
 {
@@ -335,7 +336,7 @@ Page tools (HTML, Markdown, screenshot, and JSON) allow `timeout` plus 30 second
 
 Version 0.4.0 matches the Scraper API reference. Tool IDs are unchanged; review the inputs of existing Agent and Workflow tool nodes:
 
-- Removed inputs: `super`, `wait_until`, `proxy_country`, `proxy`, `return_cookie`, and `save_result` on the page tools, `html` on Scrape Markdown, and `screenshot`, `html`, `markdown`, and `warm_start` on Get screenshot. Get screenshot always captures the full page. Page results are always saved to the MrScraper dashboard (`saveResult=true`), and `tokenCap` is never sent.
+- Removed inputs: `super`, `wait_until`, `proxy_country`, `proxy`, `return_cookie`, and `save_result` on the page tools, `html` on Scrape Markdown, and `html`, `markdown`, and `warm_start` on Get screenshot. Get screenshot's `screenshot` still defaults to `full` and accepts `top`, and now also accepts a custom viewport such as `1280x800` or `1920x1080-75`. Page results are always saved to the MrScraper dashboard (`saveResult=true`), and `tokenCap` is never sent.
 - New inputs: `max_age` on the page tools, `action` on Scrape HTML and Scrape Markdown, and `screenshot` on Scrape HTML (`false`, `full`, `top`, or a custom viewport; setting one also sends `browserRendering=true`). Scrape JSON now accepts `warm_start`, `block_resources`, and `wait_for_selector`.
 - `browser_rendering` is a select: `auto` (the default) leaves rendering to the API, `true` always renders, and `false` never does.
 - Changed defaults: Scrape JSON's `html` is `true`, `timeout` accepts up to 330 seconds, and `geo_code` and Web search's `country` are omitted unless set, so the API uses the United States.

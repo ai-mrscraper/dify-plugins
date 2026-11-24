@@ -5,8 +5,10 @@ identity:
     en_US: Get screenshot
 description:
   human:
-    en_US: Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled.
-  llm: Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled.
+    en_US: Capture a base64 PNG screenshot of the full page, the first viewport, or a custom viewport.
+      Browser rendering is always enabled.
+  llm: Capture a base64 PNG screenshot of the full page, the first viewport, or a custom viewport. Browser
+    rendering is always enabled.
 parameters:
 - name: url
   type: string
@@ -17,6 +19,20 @@ parameters:
     en_US: Absolute HTTP or HTTPS URL of the page to process.
   llm_description: Absolute HTTP or HTTPS URL of the page to process.
   form: llm
+- name: screenshot
+  type: string
+  required: false
+  label:
+    en_US: Screenshot
+  human_description:
+    en_US: 'Screenshot area to capture: full for the entire scroll height, top for the first viewport,
+      or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an optional -ZOOM percent from 25 to 300,
+      such as 1280x800 or 1920x1080-75.'
+  llm_description: 'Screenshot area to capture: full for the entire scroll height, top for the first viewport,
+    or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an optional -ZOOM percent from 25 to 300,
+    such as 1280x800 or 1920x1080-75.'
+  form: llm
+  default: full
 - name: timeout
   type: number
   required: false

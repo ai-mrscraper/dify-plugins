@@ -109,22 +109,42 @@ def optional_tristate(value: Any, name: str) -> bool | None:
     raise ParameterValidationError(f"{name} must be auto, true, or false.")
 
 
-_VIEWPORT = re.compile(r"^(\d{3,4})x(\d{3,4})(?:-(\d{2,3}))?$")
+# ASCII digits only, matched against the whole value (fullmatch) so a trailing newline or
+# non-ASCII digits are rejected.
+_VIEWPORT = re.compile(r"([0-9]{3,4})x([0-9]{3,4})(?:-([0-9]{2,3}))?")
+
+
+_AREA_HINT = (
+    "WIDTHxHEIGHT from 100 to 3840 pixels with an optional -ZOOM from 25 to 300, "
+    "such as 1280x800 or 1920x1080-75"
+)
+
+
+def _is_screenshot_area(value: Any) -> bool:
+    """True for full, top, or a WIDTHxHEIGHT viewport with an optional -ZOOM percent."""
+    if value in {"full", "top"}:
+        return True
+    match = _VIEWPORT.fullmatch(value) if isinstance(value, str) else None
+    if not match:
+        return False
+    width, height = int(match[1]), int(match[2])
+    zoom = 100 if match[3] is None else int(match[3])
+    return 100 <= width <= 3840 and 100 <= height <= 3840 and 25 <= zoom <= 300
 
 
 def screenshot_capture(value: Any, name: str) -> str | bool:
     """Accept false (or an empty input), full, top, or WIDTHxHEIGHT with an optional -ZOOM."""
     if value is None or value is False or value in {"", "false"}:
         return False
-    if value in {"full", "top"}:
+    if _is_screenshot_area(value):
         return value
-    match = _VIEWPORT.match(value) if isinstance(value, str) else None
-    if match:
-        width, height = int(match[1]), int(match[2])
-        zoom = 100 if match[3] is None else int(match[3])
-        if 100 <= width <= 3840 and 100 <= height <= 3840 and 25 <= zoom <= 300:
-            return value
-    raise ParameterValidationError(
-        f"{name} must be false, full, top, or WIDTHxHEIGHT from 100 to 3840 pixels with an "
-        "optional -ZOOM from 25 to 300, such as 1280x800 or 1920x1080-75."
-    )
+    raise ParameterValidationError(f"{name} must be false, full, top, or {_AREA_HINT}.")
+
+
+def screenshot_area(value: Any, name: str) -> str:
+    """Accept full (also for an empty input), top, or WIDTHxHEIGHT with an optional -ZOOM."""
+    if value is None or value == "":
+        return "full"
+    if _is_screenshot_area(value):
+        return value
+    raise ParameterValidationError(f"{name} must be full, top, or {_AREA_HINT}.")

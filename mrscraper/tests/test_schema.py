@@ -14,8 +14,8 @@ SERVICE_DESCRIPTIONS = {
     "fields, or adding calculated fields.",
     "scrape_html": "Retrieve the raw HTML of a page. Browser rendering is optional.",
     "scrape_markdown": "Retrieve a page as clean Markdown. Browser rendering is optional.",
-    "get_screenshot": "Capture a base64 PNG screenshot of the full page. Browser rendering is "
-    "always enabled.",
+    "get_screenshot": "Capture a base64 PNG screenshot of the full page, the first viewport, or a "
+    "custom viewport. Browser rendering is always enabled.",
     "scrape_brand": "Extract a website's colors, typography, logos, and social links as JSON.",
     "scrape_json": "Extract structured JSON from a page using a natural-language prompt. Append "
     "Json Schema: and a JSON schema to shape the output.",
@@ -50,6 +50,9 @@ PARAMETER_DESCRIPTIONS = {
     "results may be returned.",
 }
 SCREENSHOT_DESCRIPTIONS = {
+    "get_screenshot": "Screenshot area to capture: full for the entire scroll height, top for the "
+    "first viewport, or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an optional -ZOOM "
+    "percent from 25 to 300, such as 1280x800 or 1920x1080-75.",
     "scrape_html": "Screenshot to capture with the HTML: false for none, full for the entire page, "
     "top for the first viewport, or a WIDTHxHEIGHT viewport from 100 to 3840 pixels with an "
     "optional -ZOOM percent from 25 to 300, such as 1280x800 or 1920x1080-75. Setting a "
@@ -62,7 +65,7 @@ SERVICE_PARAMETERS = {
     "status": [],
     "scrape_html": ["url", *LOADING, "action", *CACHE, "screenshot"],
     "scrape_markdown": ["url", *LOADING, "action", *CACHE],
-    "get_screenshot": ["url", "timeout", "wait_for_selector", *CACHE],
+    "get_screenshot": ["url", "screenshot", "timeout", "wait_for_selector", *CACHE],
     "scrape_brand": ["url"],
     "scrape_json": ["url", "prompt", "html", *LOADING, *CACHE, "screenshot"],
     "web_search": ["query", "country", "num_results"],
@@ -166,14 +169,16 @@ def test_schema_defaults_and_types_follow_the_reference(operation: str) -> None:
 def test_screenshot_parameter_forms_differ_by_service() -> None:
     capture = {p["name"]: p for p in _schema("scrape_html")["parameters"]}
     extraction = {p["name"]: p for p in _schema("scrape_json")["parameters"]}
-    screenshot = {p["name"] for p in _schema("get_screenshot")["parameters"]}
+    area = {p["name"]: p for p in _schema("get_screenshot")["parameters"]}
 
     assert capture["screenshot"]["type"] == "string"
     assert capture["screenshot"]["default"] == "false"
     assert extraction["screenshot"]["type"] == "boolean"
     assert extraction["screenshot"]["default"] is False
-    # Get screenshot always sends screenshot=full and browserRendering=true.
-    assert screenshot.isdisjoint({"screenshot", "browser_rendering", "html", "markdown"})
+    assert area["screenshot"]["type"] == "string"
+    assert area["screenshot"]["default"] == "full"
+    # Get screenshot always sends html=false, markdown=false, and browserRendering=true.
+    assert set(area).isdisjoint({"browser_rendering", "html", "markdown"})
 
 
 def test_removed_options_are_not_offered() -> None:

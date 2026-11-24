@@ -165,11 +165,11 @@ class MrscraperClient:
             self._after_url({"markdown": True, "html": False, "screenshot": False}, fields)
         )
 
-    def get_screenshot(self, **page: Any) -> Any:
-        """Capture a base64 PNG screenshot of the full page. Browser rendering is always enabled."""
+    def get_screenshot(self, *, screenshot: str = "full", **page: Any) -> Any:
+        """Capture a base64 PNG screenshot of the full page, the first viewport, or a viewport."""
         fields = self._page_fields(browser_rendering=True, **page)
         return self._page_request(
-            self._after_url({"screenshot": "full", "html": False, "markdown": False}, fields)
+            self._after_url({"screenshot": screenshot, "html": False, "markdown": False}, fields)
         )
 
     def scrape_json(
