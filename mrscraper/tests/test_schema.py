@@ -63,14 +63,13 @@ SERVICE_PARAMETERS = {
     "scrape_html": ["url", *LOADING, "action", *CACHE, "screenshot"],
     "scrape_markdown": ["url", *LOADING, "action", *CACHE],
     "get_screenshot": ["url", "timeout", "wait_for_selector", *CACHE],
-    "scrape_brand": ["url", "timeout", "warm_start", "geo_code"],
+    "scrape_brand": ["url"],
     "scrape_json": ["url", "prompt", "html", *LOADING, *CACHE, "screenshot"],
     "web_search": ["query", "country", "num_results"],
 }
 # Inputs without a default are omitted from the request unless set.
 OMITTED = {"url", "query", "wait_for_selector", "action", "geo_code", "max_retries", "country"}
-# Scrape brand sends timeout only when it is set.
-OMITTED_BY_SERVICE = {"scrape_brand": {"timeout"}}
+OMITTED_BY_SERVICE: dict[str, set[str]] = {}
 DEFAULTS = {
     "prompt": "Extract all data as complete as possible.",
     "html": True,

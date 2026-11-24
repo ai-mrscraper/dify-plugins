@@ -415,12 +415,15 @@ def test_get_screenshot_sends_its_documented_controls_only(transport) -> None:
     ]
 
 
-def test_scrape_brand_sends_warm_start_and_omits_an_unset_timeout(transport) -> None:
+def test_scrape_brand_requests_the_brand_action_only(transport) -> None:
     configure, requests = transport
     body = {"data": {"status": "succeeded", "brand": {"name": "Example brand"}}}
     configure(lambda request: httpx.Response(200, json=body))
 
-    messages = _invoke("scrape_brand", {"url": URL, "max_age": 3600000, "screenshot": "top"})
+    messages = _invoke(
+        "scrape_brand",
+        {"url": URL, "timeout": 5, "warm_start": True, "geo_code": "GB", "max_age": 3600000},
+    )
 
     assert messages[0].message.json_object == body
     request = requests[0]
@@ -429,35 +432,8 @@ def test_scrape_brand_sends_warm_start_and_omits_an_unset_timeout(transport) -> 
         ("action", "brand-scraping"),
         ("url", URL),
         ("bundle", "none"),
-        ("warmStart", "false"),
     ]
-    # Without a timeout, the HTTP request allows 300 + 30 seconds.
-    _assert_authenticated(request, 330)
-
-
-def test_scrape_brand_sends_timeout_warm_start_and_geo_code(transport) -> None:
-    _, requests = transport
-
-    _invoke("scrape_brand", {"url": URL, "timeout": 120, "warm_start": True, "geo_code": "GB"})
-
-    request = requests[0]
-    assert list(_query(request).items()) == [
-        ("action", "brand-scraping"),
-        ("url", URL),
-        ("bundle", "none"),
-        ("timeout", "120"),
-        ("warmStart", "true"),
-        ("geoCode", "gb"),
-    ]
-    _assert_authenticated(request, 150)
-
-    _invoke("scrape_brand", {"url": URL, "timeout": None, "geo_code": " "})
-    assert list(_query(requests[-1]).items()) == [
-        ("action", "brand-scraping"),
-        ("url", URL),
-        ("bundle", "none"),
-        ("warmStart", "false"),
-    ]
+    _assert_authenticated(request, 120)
 
 
 def test_scrape_json_defaults_use_the_general_agent_and_include_html(transport) -> None:
@@ -825,11 +801,6 @@ def test_invalid_screenshot_input_is_rejected_before_http(transport, options) ->
         ("scrape_json", {"prompt": 1}),
         ("scrape_brand", {"url": "ftp://example.com"}),
         ("scrape_brand", {"url": None}),
-        ("scrape_brand", {"timeout": 0}),
-        ("scrape_brand", {"timeout": 331}),
-        ("scrape_brand", {"timeout": 1.5}),
-        ("scrape_brand", {"warm_start": "yes"}),
-        ("scrape_brand", {"geo_code": "usa"}),
     ],
 )
 def test_invalid_service_input_is_rejected_before_http(transport, operation, options) -> None:

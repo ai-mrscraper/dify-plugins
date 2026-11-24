@@ -17,40 +17,6 @@ parameters:
     en_US: Absolute HTTP or HTTPS URL of the page to process.
   llm_description: Absolute HTTP or HTTPS URL of the page to process.
   form: llm
-- name: timeout
-  type: number
-  required: false
-  label:
-    en_US: Timeout
-  human_description:
-    en_US: Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional
-      seconds.
-  llm_description: Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional
-    seconds.
-  form: llm
-  min: 1
-  max: 330
-  precision: 0
-- name: warm_start
-  type: boolean
-  required: false
-  label:
-    en_US: Warm Start
-  human_description:
-    en_US: Whether to open the site's home page first to warm the session before loading the target URL.
-  llm_description: Whether to open the site's home page first to warm the session before loading the target
-    URL.
-  form: llm
-  default: false
-- name: geo_code
-  type: string
-  required: false
-  label:
-    en_US: Geo Code
-  human_description:
-    en_US: Two-letter country code to load the page from, sent in lowercase.
-  llm_description: Two-letter country code to load the page from, sent in lowercase.
-  form: llm
 extra:
   python:
     source: tools/mrscraper_scrape_brand.py

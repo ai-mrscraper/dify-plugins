@@ -95,16 +95,7 @@ def get_screenshot_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
 
 
 def scrape_brand_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    result: dict[str, Any] = {"url": web_url(parameters.get("url"))}
-    # Scrape brand has no default timeout: it is sent only when set.
-    timeout = parameters.get("timeout")
-    if timeout is not None and timeout != "":
-        result["timeout"] = integer(timeout, "timeout", minimum=1, maximum=MAX_TIMEOUT)
-    result["warm_start"] = _flag(parameters, "warm_start", False)
-    geo_code = optional_country_code(parameters.get("geo_code"), "geo_code")
-    if geo_code is not None:
-        result["geo_code"] = geo_code
-    return result
+    return {"url": web_url(parameters.get("url"))}
 
 
 def scrape_json_parameters(parameters: dict[str, Any]) -> dict[str, Any]:

@@ -12,7 +12,7 @@ The plugin sends the provider's API token and the information needed for the sel
 - **Scrape HTML and Scrape Markdown:** the target URL; browser rendering, warm start, and resource blocking settings; selector waiting; an optional scraper action; geolocation; the cache age; the timeout; the retry limit; and, for Scrape HTML, the requested screenshot.
 - **Get screenshot:** the target URL, selector waiting, geolocation, the cache age, the timeout, and the retry limit. The plugin always requests a full-page screenshot rendered in a browser.
 - **Scrape JSON:** the target URL, the extraction prompt (which may include a JSON schema), whether to include the page HTML and a screenshot, and the same loading and page controls as Scrape HTML except the scraper action.
-- **Scrape brand:** the target URL, the warm start setting, and, when set, the timeout and geolocation.
+- **Scrape brand:** the target URL.
 - **Web search:** the search query, the country, and the requested number of results.
 
 MrScraper fetches the requested content or search results and returns the response to the plugin. Depending on the operation, this may include the raw account status record, page HTML, Markdown, screenshots, extracted JSON with execution metadata, brand data, or search data. Target content and extraction prompts may contain personal or confidential information.

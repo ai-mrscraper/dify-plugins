@@ -187,20 +187,14 @@ Extract a website's colors, typography, logos, and social links as JSON.
 | Parameter | HTTP field | Type | Default | Description |
 | --- | --- | --- | --- | --- |
 | `url` | `url` | string | Required | Absolute HTTP or HTTPS URL of the page to process. |
-| `timeout` | `timeout` | integer | Omitted | Maximum seconds to wait for the scrape, from 1 to 330. The HTTP request allows 30 additional seconds. |
-| `warm_start` | `warmStart` | boolean | `false` | Whether to open the site's home page first to warm the session before loading the target URL. |
-| `geo_code` | `geoCode` | string | Omitted | Two-letter country code to load the page from, sent in lowercase. |
 
-The plugin sends `action=brand-scraping`, `url`, and `bundle=none`, then `timeout` when set, `warmStart`, and `geoCode` when set. The HTTP request allows `timeout` plus 30 seconds, or 330 seconds when `timeout` is omitted.
+The plugin sends `action=brand-scraping`, `url`, and `bundle=none`. Page controls are not accepted. The HTTP deadline is fixed at 120 seconds.
 
 Example input:
 
 ```json
 {
-  "url": "https://example.com",
-  "timeout": 120,
-  "warm_start": true,
-  "geo_code": "gb"
+  "url": "https://example.com"
 }
 ```
 
@@ -333,7 +327,7 @@ Response examples show selected keys and types observed in live API responses. V
 
 JSON objects and arrays from the API become Dify JSON messages, HTML, Markdown, and other text become unchanged text messages, and binary responses become blob messages. HTTP status codes and response headers are not returned as workflow content.
 
-Page tools (HTML, Markdown, screenshot, and JSON) allow `timeout` plus 30 seconds for the HTTP request, up to 360 seconds. Scrape brand allows its `timeout` plus 30 seconds, or 330 seconds when `timeout` is omitted. Web search uses 120 seconds; Status uses 600 seconds. The plugin's maximum request timeout is 660 seconds; Dify, reverse proxies, and infrastructure may impose shorter limits. Live page and search calls consume MrScraper account quota.
+Page tools (HTML, Markdown, screenshot, and JSON) allow `timeout` plus 30 seconds for the HTTP request, up to 360 seconds. Scrape brand and Web search use 120 seconds; Status uses 600 seconds. The plugin's maximum request timeout is 660 seconds; Dify, reverse proxies, and infrastructure may impose shorter limits. Live page and search calls consume MrScraper account quota.
 
 ## Upgrading
 
@@ -344,7 +338,6 @@ Version 0.4.0 matches the Scraper API reference. Tool IDs are unchanged; review 
 - Removed inputs: `super`, `wait_until`, `proxy_country`, `proxy`, `return_cookie`, and `save_result` on the page tools, `html` on Scrape Markdown, and `screenshot`, `html`, `markdown`, and `warm_start` on Get screenshot. Get screenshot always captures the full page. Page results are always saved to the MrScraper dashboard (`saveResult=true`), and `tokenCap` is never sent.
 - New inputs: `max_age` on the page tools, `action` on Scrape HTML and Scrape Markdown, and `screenshot` on Scrape HTML (`false`, `full`, `top`, or a custom viewport; setting one also sends `browserRendering=true`). Scrape JSON now accepts `warm_start`, `block_resources`, and `wait_for_selector`.
 - `browser_rendering` is a select: `auto` (the default) leaves rendering to the API, `true` always renders, and `false` never does.
-- Scrape brand now accepts `timeout` and `geo_code` (both sent only when set) and `warm_start`, and its HTTP deadline is `timeout` plus 30 seconds (330 seconds without a timeout) instead of a fixed 120.
 - Changed defaults: Scrape JSON's `html` is `true`, `timeout` accepts up to 330 seconds, and `geo_code` and Web search's `country` are omitted unless set, so the API uses the United States.
 
 ### From 0.2.0 to 0.3.0
