@@ -17,7 +17,6 @@ from common.validation import (
     optional_bounded_string,
     optional_country_code,
     optional_integer,
-    optional_string,
     optional_tristate,
     screenshot_area,
     screenshot_capture,
@@ -69,17 +68,12 @@ def _loading(parameters: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
-def _with_action(parameters: dict[str, Any], result: dict[str, Any]) -> dict[str, Any]:
-    action = optional_string(parameters.get("action"), "action")
-    return result | ({"action": action} if action is not None else {})
-
-
 def status_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
     return {}
 
 
 def scrape_html_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    result = _with_action(parameters, _loading(parameters))
+    result = _loading(parameters)
     capture = screenshot_capture(parameters.get("screenshot"), "screenshot")
     if capture is not False:
         # A screenshot needs a rendered page, so it always sends browserRendering=true.
@@ -88,7 +82,7 @@ def scrape_html_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
 
 
 def scrape_markdown_parameters(parameters: dict[str, Any]) -> dict[str, Any]:
-    return _with_action(parameters, _loading(parameters))
+    return _loading(parameters)
 
 
 def get_screenshot_parameters(parameters: dict[str, Any]) -> dict[str, Any]:

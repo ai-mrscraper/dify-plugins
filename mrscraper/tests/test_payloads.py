@@ -47,8 +47,9 @@ REMOVED = {
     # Removed inputs: results are always saved and tokenCap is never sent.
     "save_result": False,
     "token_cap": 50,
+    "action": "flow",
 }
-REMOVED_WIRE = {"super", "waitUntil", "proxyCountry", "proxy", "returnCookie", "tokenCap"}
+REMOVED_WIRE = {"super", "waitUntil", "proxyCountry", "proxy", "returnCookie", "tokenCap", "action"}
 
 
 @pytest.fixture
@@ -176,7 +177,6 @@ def test_scrape_html_sends_every_documented_control_in_order(transport) -> None:
             "warm_start": True,
             "block_resources": True,
             "wait_for_selector": " body ",
-            "action": " product-flow ",
             "geo_code": "ID",
             "max_age": 3600000,
             "max_retries": 0,
@@ -196,7 +196,6 @@ def test_scrape_html_sends_every_documented_control_in_order(transport) -> None:
         ("warmStart", "true"),
         ("blockResources", "true"),
         ("waitForSelector", "body"),
-        ("action", "product-flow"),
         ("geoCode", "id"),
         ("saveResult", "true"),
         ("maxAge", "3600000"),
@@ -324,7 +323,7 @@ def test_scrape_markdown_defaults_return_markdown_text(transport) -> None:
     _assert_authenticated(request, 330)
 
 
-def test_scrape_markdown_sends_rendering_action_and_cache_controls(transport) -> None:
+def test_scrape_markdown_sends_rendering_and_cache_controls(transport) -> None:
     _, requests = transport
 
     _invoke(
@@ -332,7 +331,6 @@ def test_scrape_markdown_sends_rendering_action_and_cache_controls(transport) ->
         {
             "url": URL,
             "browser_rendering": "true",
-            "action": "docs",
             "max_age": 86400000,
             "geo_code": "gb",
         },
@@ -347,7 +345,6 @@ def test_scrape_markdown_sends_rendering_action_and_cache_controls(transport) ->
         ("timeout", "300"),
         ("warmStart", "false"),
         ("blockResources", "false"),
-        ("action", "docs"),
         ("geoCode", "gb"),
         ("saveResult", "true"),
         ("maxAge", "86400000"),
@@ -862,8 +859,6 @@ def test_invalid_screenshot_input_is_rejected_before_http(transport, options) ->
         ("scrape_html", {"screenshot": "1280x3841"}),
         ("scrape_html", {"screenshot": "1280x800-24"}),
         ("scrape_html", {"screenshot": "1280x800-301"}),
-        ("scrape_html", {"action": 3}),
-        ("scrape_markdown", {"action": ["flow"]}),
         ("scrape_json", {"screenshot": "full"}),
         ("scrape_json", {"html": "true"}),
         ("scrape_json", {"prompt": "   "}),

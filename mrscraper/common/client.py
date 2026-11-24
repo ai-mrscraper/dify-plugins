@@ -114,7 +114,6 @@ class MrscraperClient:
         browser_rendering: bool | None = None,
         warm_start: bool | None = None,
         block_resources: bool | None = None,
-        action: str | None = None,
     ) -> dict[str, Any]:
         """Return the shared fields in the documented request order, without unset values."""
         fields = {
@@ -123,7 +122,6 @@ class MrscraperClient:
             "warmStart": warm_start,
             "blockResources": block_resources,
             "waitForSelector": wait_for_selector,
-            "action": action,
             "geoCode": geo_code,
             # Results are always saved to the dashboard; saveResult is not an input.
             "saveResult": True,

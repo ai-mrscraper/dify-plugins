@@ -31,7 +31,7 @@ Your Dify deployment must allow outbound HTTPS connections to `api.mrscraper.com
 
 HTML, Markdown, screenshots, and JSON extraction share `url`, `timeout`, `wait_for_selector`, `geo_code`, `max_age`, and `max_retries`. Defaults are a 300-second timeout (up to 330) and a `max_age` of 0 milliseconds, which always scrapes fresh; `max_age` accepts up to 604800000 (7 days). Leave `geo_code` and `max_retries` empty to omit them, so the API loads the page from the United States with no retry limit. These tools always send `saveResult=true`, so their results are saved to the MrScraper dashboard; `tokenCap` is never sent.
 
-HTML, Markdown, and JSON extraction also accept `browser_rendering`, `warm_start`, and `block_resources`; HTML and Markdown also accept `action`. `browser_rendering` is a select: `auto` (the default) leaves it out so the API loads the page without a browser first and switches to one if the request is blocked, `true` always renders, and `false` never does. `wait_for_selector` needs a rendered page, so do not combine it with `false`. A Scrape HTML screenshot sends `browserRendering=true` regardless of `browser_rendering`, and Get screenshot always renders in a browser.
+HTML, Markdown, and JSON extraction also accept `browser_rendering`, `warm_start`, and `block_resources`. `browser_rendering` is a select: `auto` (the default) leaves it out so the API loads the page without a browser first and switches to one if the request is blocked, `true` always renders, and `false` never does. `wait_for_selector` needs a rendered page, so do not combine it with `false`. A Scrape HTML screenshot sends `browserRendering=true` regardless of `browser_rendering`, and Get screenshot always renders in a browser.
 
 Each tool adds its documented fixed request fields automatically: `html=true` and `markdown=false` for Scrape HTML; `markdown=true`, `html=false`, and `screenshot=false` for Scrape Markdown; `html=false`, `markdown=false`, and `browserRendering=true` after the area for Get screenshot; `saveResult=true` for the page tools; `action=brand-scraping` and `bundle=none` for Scrape brand; `agent=general` for Scrape JSON; and `action=websearch` for Web search.
 
@@ -86,7 +86,6 @@ Retrieve the raw HTML of a page. Browser rendering is optional.
 | `warm_start` | `warmStart` | boolean | `false` | Whether to open the site's home page first to warm the session before loading the target URL. |
 | `block_resources` | `blockResources` | boolean | `false` | Whether to block images, fonts, and stylesheets while loading the page. |
 | `wait_for_selector` | `waitForSelector` | string | Omitted | CSS selector or text to wait for on the page before returning the result, up to 500 characters. |
-| `action` | `action` | string | Omitted | Scraper action that routes the request or simply flags it, useful for separating analytics per domain. |
 | `geo_code` | `geoCode` | string | Omitted | Two-letter country code to load the page from, sent in lowercase. |
 | `max_age` | `maxAge` | integer | `0` | Return a cached result of the same request when it is newer than the selected age. A cached result costs the same tokens as the original scrape. |
 | `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |
@@ -127,7 +126,6 @@ Retrieve a page as clean Markdown. Browser rendering is optional.
 | `warm_start` | `warmStart` | boolean | `false` | Whether to open the site's home page first to warm the session before loading the target URL. |
 | `block_resources` | `blockResources` | boolean | `false` | Whether to block images, fonts, and stylesheets while loading the page. |
 | `wait_for_selector` | `waitForSelector` | string | Omitted | CSS selector or text to wait for on the page before returning the result, up to 500 characters. |
-| `action` | `action` | string | Omitted | Scraper action that routes the request or simply flags it, useful for separating analytics per domain. |
 | `geo_code` | `geoCode` | string | Omitted | Two-letter country code to load the page from, sent in lowercase. |
 | `max_age` | `maxAge` | integer | `0` | Return a cached result of the same request when it is newer than the selected age. A cached result costs the same tokens as the original scrape. |
 | `max_retries` | `maxRetries` | integer | Omitted | Maximum number of retries, as a nonnegative integer. Omit this parameter for no limit. |

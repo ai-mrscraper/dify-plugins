@@ -37,8 +37,6 @@ PARAMETER_DESCRIPTIONS = {
     "block_resources": "Whether to block images, fonts, and stylesheets while loading the page.",
     "wait_for_selector": "CSS selector or text to wait for on the page before returning the "
     "result, up to 500 characters.",
-    "action": "Scraper action that routes the request or simply flags it, useful for separating "
-    "analytics per domain.",
     "geo_code": "Two-letter country code to load the page from, sent in lowercase.",
     "max_age": "Return a cached result of the same request when it is newer than the selected "
     "age. A cached result costs the same tokens as the original scrape.",
@@ -63,15 +61,15 @@ LOADING = ["browser_rendering", "timeout", "warm_start", "block_resources", "wai
 CACHE = ["geo_code", "max_age", "max_retries"]
 SERVICE_PARAMETERS = {
     "status": [],
-    "scrape_html": ["url", *LOADING, "action", *CACHE, "screenshot"],
-    "scrape_markdown": ["url", *LOADING, "action", *CACHE],
+    "scrape_html": ["url", *LOADING, *CACHE, "screenshot"],
+    "scrape_markdown": ["url", *LOADING, *CACHE],
     "get_screenshot": ["url", "screenshot", "timeout", "wait_for_selector", *CACHE],
     "scrape_brand": ["url"],
     "scrape_json": ["url", "prompt", "html", *LOADING, *CACHE, "screenshot"],
     "web_search": ["query", "country", "num_results"],
 }
 # Inputs without a default are omitted from the request unless set.
-OMITTED = {"url", "query", "wait_for_selector", "action", "geo_code", "max_retries", "country"}
+OMITTED = {"url", "query", "wait_for_selector", "geo_code", "max_retries", "country"}
 OMITTED_BY_SERVICE: dict[str, set[str]] = {}
 DEFAULTS = {
     "prompt": "Extract all data as complete as possible.",
@@ -183,7 +181,7 @@ def test_screenshot_parameter_forms_differ_by_service() -> None:
 
 def test_removed_options_are_not_offered() -> None:
     removed = {"super", "wait_until", "proxy_country", "proxy", "return_cookie", "markdown"}
-    removed |= {"save_result", "token_cap"}
+    removed |= {"save_result", "token_cap", "action"}
     for operation in SERVICE_DESCRIPTIONS:
         names = {parameter["name"] for parameter in _schema(operation)["parameters"]}
         assert names.isdisjoint(removed), operation

@@ -86,17 +86,6 @@ parameters:
   llm_description: CSS selector or text to wait for on the page before returning the result, up to 500
     characters.
   form: llm
-- name: action
-  type: string
-  required: false
-  label:
-    en_US: Action
-  human_description:
-    en_US: Scraper action that routes the request or simply flags it, useful for separating analytics
-      per domain.
-  llm_description: Scraper action that routes the request or simply flags it, useful for separating analytics
-    per domain.
-  form: llm
 - name: geo_code
   type: string
   required: false
