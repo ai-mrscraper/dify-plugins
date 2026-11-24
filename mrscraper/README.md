@@ -330,35 +330,8 @@ JSON objects and arrays from the API become Dify JSON messages, HTML, Markdown, 
 
 Page tools (HTML, Markdown, screenshot, and JSON) allow `timeout` plus 30 seconds for the HTTP request, up to 360 seconds. Scrape brand and Web search use 120 seconds; Status uses 600 seconds. The plugin's maximum request timeout is 660 seconds; Dify, reverse proxies, and infrastructure may impose shorter limits. Live page and search calls consume MrScraper account quota.
 
-## Upgrading
-
-### From 0.3.0 to 0.4.0
-
-Version 0.4.0 matches the Scraper API reference. Tool IDs are unchanged; review the inputs of existing Agent and Workflow tool nodes:
-
-- Removed inputs: `super`, `wait_until`, `proxy_country`, `proxy`, `return_cookie`, and `save_result` on the page tools, `html` on Scrape Markdown, and `html`, `markdown`, and `warm_start` on Get screenshot. Get screenshot's `screenshot` still defaults to `full` and accepts `top`, and now also accepts a custom viewport such as `1280x800` or `1920x1080-75`. Page results are always saved to the MrScraper dashboard (`saveResult=true`), and `tokenCap` is never sent.
-- New inputs: `max_age` on the page tools, `action` on Scrape HTML and Scrape Markdown, and `screenshot` on Scrape HTML (`false`, `full`, `top`, or a custom viewport; setting one also sends `browserRendering=true`). Scrape JSON now accepts `warm_start`, `block_resources`, and `wait_for_selector`.
-- `browser_rendering` is a select: `auto` (the default) leaves rendering to the API, `true` always renders, and `false` never does.
-- Changed defaults: Scrape JSON's `html` is `true`, `timeout` accepts up to 330 seconds, and `geo_code` and Web search's `country` are omitted unless set, so the API uses the United States.
-
-### From 0.2.0 to 0.3.0
-
-Version 0.3.0 replaces the Account and Scraper API tools with the seven standard services. Recreate affected Agent and Workflow tool nodes and reconnect their inputs and outputs:
-
-- **Account** (`mrscraper_account`) → **Status** (`mrscraper_status`). Status returns the raw account status body instead of the previous summary, and it has no `timeout` parameter.
-- **Scraper API** (`mrscraper_scraper_api`) → **Scrape HTML**, **Scrape Markdown**, or **Get screenshot**, depending on the output you need. `home_page` is now `warm_start`. `screenshot` is now `full` or `top` on Get screenshot.
-- The `use_proxy`, `bypass_proxy`, `cookie_jar`, `headers`, `token_cap`, `stream`, and `discard_token_secret` options were removed. The `browser_rendering` select (`auto`/`true`/`false`) is now a boolean that defaults to `false`.
-- Page defaults changed to the standard values: `timeout` 300 seconds (previously 120), `geo_code` and `proxy_country` `us`, and no retry limit unless `max_retries` is set (previously 3).
-- **Web search** keeps its tool ID and `query`, `country`, and `num_results` inputs. It now sends `GET` with query parameters, `country` defaults to `us`, and the request deadline is 120 seconds.
-- New tools: **Scrape brand** and **Scrape JSON**.
-- The API token is no longer sent in the request URL; it is sent only in request headers.
-
-### Earlier versions
-
-Version 0.2.0 changed Web Search to `query`, `country`, and `num_results`. Version 0.1.0 replaced all 18 tool IDs from 0.0.1; the former extraction, crawl, reusable scraper creation, scraper rerun, and saved-result operations have no equivalent.
-
 ## Privacy and support
 
-Review [PRIVACY.md](PRIVACY.md) for the data sent to MrScraper, including URLs, queries, prompts, and proxy settings. Use content you are authorized to access and process.
+Review [PRIVACY.md](PRIVACY.md) for the data sent to MrScraper, including URLs, queries, and prompts. Use content you are authorized to access and process.
 
 For plugin development, see the [source](https://github.com/ai-mrscraper/dify-plugins/tree/feat/mrscraper-0.4.0-source/mrscraper) and [GUIDE.md](https://github.com/ai-mrscraper/dify-plugins/blob/feat/mrscraper-0.4.0-source/mrscraper/GUIDE.md). Contact `support@mrscraper.com` for support.
